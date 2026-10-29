@@ -1,4 +1,4 @@
-# BPR (Breast pCR Prediction) — 코드·결과 안내
+# BPR (Breast pCR Response) — 코드·결과 안내
 
 > 팀 CANSLER · 치료 전 유방 DCE-MRI로 신보조 항암치료의 병리학적 완전관해(pCR)를 예측하는 연구 코드
 > 데이터: I-SPY2 — BreastDCEDL_ISPY2(치료 전 MRI, 982명) + TCIA I-SPY2(치료 3주 차 MRI, 942명)
