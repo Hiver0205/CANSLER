@@ -1,11 +1,11 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png" />
-  <img src="assets/logo-light.png" width="260" alt="CANSLER" />
+  <source media="(prefers-color-scheme: dark)" srcset="assets/bpr-logo-dark.png" />
+  <img src="assets/bpr-logo-light.png" width="240" alt="BPR · Breast pCR Prediction" />
 </picture>
 
-<h2>🩺 BPR — Breast pCR Response</h2>
+<h2>BPR — Breast pCR Response</h2>
 
 <p>
 <b>치료 전 유방 MRI로 신보조 항암치료의 완전관해(pCR)를 예측하고,<br/>
