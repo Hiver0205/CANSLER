@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/bpr-logo-dark.png" />
-  <img src="assets/bpr-logo-light.png" width="240" alt="BPR · Breast pCR Response" />
+  <source media="(prefers-color-scheme: dark)" srcset="assets/bpr-logo-response-dark.png" />
+  <img src="assets/bpr-logo-response-light.png" width="240" alt="BPR · Breast pCR Response" />
 </picture>
 
 <h2>BPR — Breast pCR Response</h2>
@@ -50,8 +50,8 @@ pCR에 도달한 환자는 그렇지 않은 환자보다 5년 생존·무병생�
 그러나 pCR 여부는 **수술 후 병리 검사로만** 확인할 수 있습니다.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/stats-dark.png" />
-  <img src="assets/stats-light.png" width="860" alt="pCR 도달 22%, 생검-수술조직 아형 불일치 16.4%, HR+/HER2- 아형 pCR률 16.8%" />
+  <source media="(prefers-color-scheme: dark)" srcset="assets/problem-stats-dark.png" />
+  <img src="assets/problem-stats-light.png" width="860" alt="pCR 도달 22%, 생검-수술조직 아형 불일치 16.4%, HR+/HER2- 아형 pCR률 16.8%" />
 </picture>
 
 | # | 문제 | 핵심 근거 |
@@ -75,8 +75,8 @@ pCR에 도달한 환자는 그렇지 않은 환자보다 5년 생존·무병생�
 ### 분석 흐름
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/pipeline-dark.png" />
-  <img src="assets/pipeline-light.png" width="860" alt="분석 흐름: 데이터 → 전처리 → 특징 추출 → 예측 모델 → 3주 차 MRI → 내부 검증" />
+  <source media="(prefers-color-scheme: dark)" srcset="assets/analysis-pipeline-dark.png" />
+  <img src="assets/analysis-pipeline-light.png" width="860" alt="분석 흐름: 데이터 → 전처리 → 특징 추출 → 예측 모델 → 3주 차 MRI → 내부 검증" />
 </picture>
 
 ### 영상 특징 (총 801개)
@@ -115,15 +115,15 @@ pCR에 도달한 환자는 그렇지 않은 환자보다 5년 생존·무병생�
 <h2 id="results">04. 결과</h2>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/results-dark.png" />
-  <img src="assets/results-light.png" width="860" alt="내부 검증 AUC: 임상 0.641, 치료 전 MRI 0.757, 치료 3주 차 MRI 0.816" />
+  <source media="(prefers-color-scheme: dark)" srcset="assets/internal-auc-dark.png" />
+  <img src="assets/internal-auc-light.png" width="860" alt="내부 검증 AUC: 임상 0.641, 치료 전 MRI 0.757, 치료 3주 차 MRI 0.816" />
 </picture>
 
 <br/>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/subtype-dark.png" />
-  <img src="assets/subtype-light.png" width="860" alt="아형별 내부 검증 AUC: HR+/HER2- 0.48→0.87→0.88, TNBC 0.45→0.70→0.77, HER2+ 0.56→0.60→0.71" />
+  <source media="(prefers-color-scheme: dark)" srcset="assets/subtype-auc-dark.png" />
+  <img src="assets/subtype-auc-light.png" width="860" alt="아형별 내부 검증 AUC: HR+/HER2- 0.48→0.87→0.88, TNBC 0.45→0.70→0.77, HER2+ 0.56→0.60→0.71" />
 </picture>
 
 - 치료 전 MRI만 더해도 AUC가 **0.641 → 0.757** (ΔAUC +0.116, DeLong p < 0.001)
@@ -228,8 +228,8 @@ Results/                      모델별 결과 CSV · 그림
 <h2 id="team">Team CANSLER</h2>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/team-dark.png" />
-  <img src="assets/team-light.png" width="860" alt="정가영 GaYeong Jeong, PM · PL · CM / 김예슬 YeSeul Kim, ENG · QA" />
+  <source media="(prefers-color-scheme: dark)" srcset="assets/team-cards-dark.png" />
+  <img src="assets/team-cards-light.png" width="860" alt="정가영 GaYeong Jeong, PM · PL · CM / 김예슬 YeSeul Kim, ENG · QA" />
 </picture>
 
 <p align="center"><b>정가영</b> GaYeong Jeong &nbsp;·&nbsp; <b>김예슬</b> YeSeul Kim &nbsp;|&nbsp; 지도교수 <b>한주혁</b></p>
