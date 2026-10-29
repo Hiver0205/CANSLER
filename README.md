@@ -18,15 +18,15 @@ from pre-treatment DCE-MRI, and testing whether imaging adds value beyond clinic
 </p>
 
 <p>
-<img src="https://img.shields.io/badge/Python-3.11-b40e26?style=flat-square&logo=python&logoColor=white" />
-<img src="https://img.shields.io/badge/PyTorch-ResNet--18-d5334b?style=flat-square&logo=pytorch&logoColor=white" />
-<img src="https://img.shields.io/badge/scikit--learn-Logistic_Regression-f26375?style=flat-square&logo=scikitlearn&logoColor=white" />
-<img src="https://img.shields.io/badge/PyRadiomics-IBSI-fd969e?style=flat-square" />
-<img src="https://img.shields.io/badge/I--SPY2-982_patients-b40e26?style=flat-square" />
+<img src="https://img.shields.io/badge/Python-3.11-b40e26?style=flat-square&labelColor=1f1e22" />
+<img src="https://img.shields.io/badge/PyTorch-ResNet--18-b40e26?style=flat-square&labelColor=1f1e22" />
+<img src="https://img.shields.io/badge/scikit--learn-Logistic_Regression-b40e26?style=flat-square&labelColor=1f1e22" />
+<img src="https://img.shields.io/badge/PyRadiomics-IBSI-b40e26?style=flat-square&labelColor=1f1e22" />
+<img src="https://img.shields.io/badge/I--SPY2-982_patients-b40e26?style=flat-square&labelColor=1f1e22" />
 </p>
 
 <p>
-<img src="https://img.shields.io/badge/%EB%82%B4%EB%B6%80%20%EA%B2%80%EC%A6%9D%20AUC-%EC%B9%98%EB%A3%8C%20%EC%A0%84%200.757%20%C2%B7%203%EC%A3%BC%20%EC%B0%A8%200.816-b40e26?style=for-the-badge" alt="내부 검증 AUC: 치료 전 0.757 · 3주 차 0.816" />
+<img src="https://img.shields.io/badge/%EB%82%B4%EB%B6%80%20%EA%B2%80%EC%A6%9D%20AUC-%EC%B9%98%EB%A3%8C%20%EC%A0%84%200.757%20%C2%B7%203%EC%A3%BC%20%EC%B0%A8%200.816-b40e26?style=for-the-badge&labelColor=1f1e22" alt="내부 검증 AUC: 치료 전 0.757 · 3주 차 0.816" />
 </p>
 
 <p>
@@ -64,7 +64,7 @@ pCR에 도달한 환자는 그렇지 않은 환자보다 5년 생존·무병생�
 
 <h2 id="approach">02. 접근 방법</h2>
 
-### 🔬 핵심 연구 질문
+### 핵심 연구 질문
 
 > **"비침습 MRI 영상이, 아형 등 기존 임상 정보에 *더해* pCR 예측에 추가로 기여하는가?"**
 
@@ -72,24 +72,14 @@ pCR에 도달한 환자는 그렇지 않은 환자보다 5년 생존·무병생�
 - **아형 내 검증** — 같은 아형 안에서도 영상이 pCR을 구별하는지 아형별 성능을 따로 평가
 - **추가 분석** — 치료 3주 차 MRI를 더하면 예측이 얼마나 더 좋아지는가
 
-### 🧭 분석 흐름
+### 분석 흐름
 
-```mermaid
-flowchart LR
-    A["데이터<br/>치료 전 DCE-MRI<br/>982명"] --> B["전처리<br/>spacing 복원 · 크롭<br/>조영 증강률 · 1 mm"]
-    B --> C["특징 추출<br/>영상 특징 801개<br/>+ CNN 입력"]
-    C --> D["모델<br/>로지스틱 회귀 14개<br/>+ ResNet-18 2개"]
-    D --> E["치료 3주 차<br/>MRI 추가 분석<br/>942명"]
-    E --> F["내부 검증<br/>198명 · 1회 평가"]
-    style A fill:#fff1f3,stroke:#f26375,color:#1f1e22
-    style B fill:#fff1f3,stroke:#f26375,color:#1f1e22
-    style C fill:#fff1f3,stroke:#f26375,color:#1f1e22
-    style D fill:#f26375,stroke:#d5334b,color:#ffffff
-    style E fill:#fff1f3,stroke:#f26375,color:#1f1e22
-    style F fill:#b40e26,stroke:#b40e26,color:#ffffff
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/pipeline-dark.png" />
+  <img src="assets/pipeline-light.png" width="860" alt="분석 흐름: 데이터 → 전처리 → 특징 추출 → 예측 모델 → 3주 차 MRI → 내부 검증" />
+</picture>
 
-### 📐 영상 특징 (총 801개)
+### 영상 특징 (총 801개)
 
 | 그룹 | 개수 | 내용 |
 |:---|:---:|:---|
@@ -99,7 +89,7 @@ flowchart LR
 | 질감 | 665 | PyRadiomics 질감 — 조영 증강률·SER·시간 곡선 지도 |
 | 종양 주변 | 42 | 종양 경계 바깥 0–40 mm 고리 영역과 배경 실질 증강 |
 
-### 🧠 예측 모델
+### 예측 모델
 
 - **로지스틱 회귀 14개** — 특징 묶음(관점)을 달리해 학습. L1으로 특징을 고른 뒤 L2 로지스틱 회귀로 예측
 - **ResNet-18 2개** — 사전학습 CNN을 6채널 시간 증강 영상으로 미세조정 (2.5D·3D)
@@ -118,7 +108,7 @@ flowchart LR
 - **환자 정보** — pCR, HR, HER2, 나이, 인종, 폐경
 - **분할** — 학습 784명 / 내부 검증 198명. 학습 환자로만 5-fold × 20회 교차검증으로 모델을 정하고, 내부 검증 환자는 **마지막에 한 번만** 평가
 
-> ⚠️ 영상 데이터는 용량과 이용 약관 때문에 저장소에 포함하지 않습니다. 각 출처에서 직접 받아야 합니다.
+> 영상 데이터는 용량과 이용 약관 때문에 저장소에 포함하지 않습니다. 각 출처에서 직접 받아야 합니다.
 
 <br/>
 
@@ -177,7 +167,7 @@ Code/
 Results/                      모델별 결과 CSV · 그림
 ```
 
-📘 폴더·파일별 설명, 실행 순서, 결과 파일 안내는 **[GUIDE.md](GUIDE.md)** 에 정리했습니다.
+폴더·파일별 설명, 실행 순서, 결과 파일 안내는 **[GUIDE.md](GUIDE.md)** 에 정리했습니다.
 
 <details>
 <summary>기술 스택</summary>
@@ -246,7 +236,7 @@ Results/                      모델별 결과 CSV · 그림
 
 <br/>
 
-## 📚 참고 문헌
+## 참고 문헌
 
 - Antonini, M., et al. (2023). Real-world evidence of neoadjuvant chemotherapy for breast cancer treatment in a Brazilian multicenter cohort. *The Breast, 72*, 103577. https://doi.org/10.1016/j.breast.2023.103577
 - Fang, S., et al. (2024). A real-world clinicopathological model for predicting pathological complete response to neoadjuvant chemotherapy in breast cancer. *Frontiers in Oncology, 14*, 1323226. https://doi.org/10.3389/fonc.2024.1323226
@@ -255,7 +245,7 @@ Results/                      모델별 결과 CSV · 그림
 - Clinical Lab Products. (2025). *AI test predicts neoadjuvant response in early breast cancer.* https://clpmag.com/disease-states/cancer/breast/ai-test-predicts-neoadjuvant-response-early-breast-cancer/
 - Agendia. (2024). *New neoadjuvant trial (MINT) confirms the predictive utility of MammaPrint & BluePrint.* https://agendia.com/neoadjuvant-mint-trial-confirms-predictive-utility-of-mammaprint-blueprint/
 
-## 🗂 데이터 출처
+## 데이터 출처
 
 - **BreastDCEDL** — I-SPY2 치료 전 DCE-MRI · 종양 마스크 · 임상 정보 (Zenodo 배포, CC BY-NC 4.0)
 - **The Cancer Imaging Archive (TCIA), I-SPY2 / ACRIN 6698** — 치료 3주 차 DCE-MRI · 분석 마스크 (CC BY 4.0). https://www.cancerimagingarchive.net/collection/ispy2/
