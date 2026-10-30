@@ -102,8 +102,8 @@ pCR에 도달한 환자는 그렇지 않은 환자보다 5년 생존·무병생�
 
 | 데이터 | 내용 | 규모 | 용도 |
 |:---|:---|:---:|:---|
-| **BreastDCEDL_ISPY2** | 치료&nbsp;전 DCE-MRI&nbsp;(NIfTI), 종양&nbsp;ROI&nbsp;마스크,<br>임상&nbsp;정보·pCR&nbsp;라벨 | 982명<br>약&nbsp;54&nbsp;GB | 주&nbsp;분석 |
-| **TCIA&nbsp;I-SPY2** | 같은 환자의 치료&nbsp;3주&nbsp;차 DCE-MRI와<br>분석&nbsp;마스크&nbsp;(DICOM) | 942명<br>약&nbsp;128&nbsp;GB | 3주&nbsp;차<br>추가&nbsp;분석 |
+| **BreastDCEDL_ISPY2** | 치료 전 DCE-MRI (NIfTI), 종양 ROI 마스크, 임상 정보·pCR 라벨 | 982명 · 약 54 GB | 주 분석 |
+| **TCIA I-SPY2** | 같은 환자의 치료 3주 차 DCE-MRI와 분석 마스크 (DICOM) | 942명 · 약 128 GB | 3주 차 추가 분석 |
 
 - **환자 정보** — pCR, HR, HER2, 나이, 인종, 폐경
 - **분할** — 학습 784명 / 내부 검증 198명. 학습 환자로만 5-fold × 20회 교차검증으로 모델을 정하고, 내부 검증 환자는 **마지막에 한 번만** 평가
