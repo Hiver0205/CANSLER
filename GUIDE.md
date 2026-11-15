@@ -11,16 +11,16 @@
 데이터 → 전처리 → 특징 추출 → 모델(+CNN) → 치료 3주 차 MRI 추가 분석 → 검증
 ```
 
-| 단계 | 폴더 | 하는 일 |
+| 단⁠계 | 폴⁠더 | 하⁠는 일 |
 |---|---|---|
-| 설정 | `00) Settings` | 경로·임상 변수 등 공통 설정 |
-| 데이터 | `01) Data` | 데이터 통계 확인, 영상 압축 해제 |
-| 전처리 | `02) Preprocessing` | 화소 크기 복원, 종양 크롭, 조영 증강률 변환, 1 mm 리샘플링 |
-| 특징 추출 | `03) Feature Extraction` | 동역학·종양 주변·시간 곡선·habitat·질감 특징, CNN 입력 |
-| 모델 | `04) Analysis Table` → `05) Model Training` → `06) CNN Training` → `07) Evaluation` | 분석 테이블 → 로지스틱 회귀 14개 → ResNet-18 → 교차검증 평가 |
-| 치료 3주 차 MRI 추가 분석 | `08) Week-3 MRI Analysis` | 3주 차 MRI 다운로드 → 특징 → 모델 → CNN 결합 |
-| 검증 | `09) Final Validation` | 내부 검증(198명) 1회 평가 |
-| 웹앱 | `10) Web` | 의료진용 pCR 예측 웹앱 (영상 업로드 → 분석 → 결과·근거 표시) |
+| 설⁠정 | `00) Settings` | 경⁠로⁠·⁠임⁠상 변⁠수 등 공⁠통 설⁠정 |
+| 데⁠이⁠터 | `01) Data` | 데⁠이⁠터 통⁠계 확⁠인⁠, 영⁠상 압⁠축 해⁠제 |
+| 전⁠처⁠리 | `02) Preprocessing` | 화⁠소 크⁠기 복⁠원⁠, 종⁠양 크⁠롭⁠, 조⁠영 증⁠강⁠률 변⁠환⁠, 1 mm 리⁠샘⁠플⁠링 |
+| 특⁠징 추⁠출 | `03) Feature Extraction` | 동⁠역⁠학⁠·⁠종⁠양 주⁠변⁠·⁠시⁠간 곡⁠선⁠·habitat·⁠질⁠감 특⁠징⁠, CNN 입⁠력 |
+| 모⁠델 | `04) Analysis Table` → `05) Model Training` → `06) CNN Training` → `07) Evaluation` | 분⁠석 테⁠이⁠블 → 로⁠지⁠스⁠틱 회⁠귀 14⁠개 → ResNet-18 → 교⁠차⁠검⁠증 평⁠가 |
+| 치⁠료 3⁠주 차 MRI 추⁠가 분⁠석 | `08) Week-3 MRI Analysis` | 3⁠주 차 MRI 다⁠운⁠로⁠드 → 특⁠징 → 모⁠델 → CNN 결⁠합 |
+| 검⁠증 | `09) Final Validation` | 내⁠부 검⁠증⁠(198⁠명⁠) 1⁠회 평⁠가 |
+| 웹⁠앱 | `10) Web` | 의⁠료⁠진⁠용 pCR 예⁠측 웹⁠앱 (⁠영⁠상 업⁠로⁠드 → 분⁠석 → 결⁠과⁠·⁠근⁠거 표⁠시⁠) |
 
 **파일 이름 규칙:** `실행 순서) 단계_핵심 내용.py` (예: `00) Settings_Path, Clinical Variables.py`)
 **검증 방식:** 982명을 학습 784명 / 내부 검증 198명으로 나눔. 학습 환자로만 5-fold × 20회 교차검증으로 모델을 정하고, 내부 검증 환자는 마지막에 한 번만 평가.
@@ -180,20 +180,20 @@
 
 ## 3. 실행 순서
 
-| 순서 | 실행 |
+| 순⁠서 | 실⁠행 |
 |---|---|
 | 1 | 00 → 01 → 02 → 03 |
-| 2 | 04 → 05 → 06 → 07 → 08 → 09 (옵션별 여러 번) |
+| 2 | 04 → 05 → 06 → 07 → 08 → 09 (⁠옵⁠션⁠별 여⁠러 번⁠) |
 | 3 | 10 → 11 → 12 → 13 |
 | 4 | 14 → 15 → 16 → 09·12 (`--root T1`) → 17 → 18 |
 | 5 | 12 `--final` · 17 `--source full --final` → 19 |
 
 > **주의:** 이 폴더의 코드는 보기 쉽도록 이름을 바꾼 사본입니다. 코드 안에서는 원래 파일 이름(`00_config`, `03_preprocess`, `06_train_cv`, `07_evaluate` 등)으로 서로를 불러오므로, 그대로 실행하려면 원래 이름으로 한 폴더에 두어야 합니다. 경로는 `00) Settings`에서 설정합니다.
 
-| 새 이름 번호 | 원래 파일 |
+| 새 이⁠름 번⁠호 | 원⁠래 파⁠일 |
 |---|---|
 | 00 | `00_config.py` |
-| 01 / 02 | `01_explore_metadata.py` / `02_extract_images.py` |
+| 01 / 02 | `01_explore_metadata.py` / `02_extract_images.py` |
 | 03 | `03_preprocess.py` |
 | 04 / 05 / 06 / 07 / 08 | `03b_kinetic_features.py` / `03c_peritumoral.py` / `03e_timecurve.py` / `03f_habitat.py` / `03g_timestack.py` |
 | 09 | `04_extract_radiomics.py` |
@@ -201,8 +201,8 @@
 | 11 | `06_train_cv.py` |
 | 12 | `04c_cnn_finetune.py` |
 | 13 | `07_evaluate.py` |
-| 14 / 15 / 16 | `09_t1_download.py` / `10_t1_features.py` / `10b_t1_maps.py` |
-| 17 / 18 | `08_exp3_early_response.py` / `08b_exp3_cnn_ensemble.py` |
+| 14 / 15 / 16 | `09_t1_download.py` / `10_t1_features.py` / `10b_t1_maps.py` |
+| 17 / 18 | `08_exp3_early_response.py` / `08b_exp3_cnn_ensemble.py` |
 | 19 | `11_final_holdout.py` |
 | 20 / 21 / 22 / 23 / 24 | `Web/app.py` / `Code1/21_infer.py` / `Web/bpr_core.py` / `Web/auth.py` / `Web/precompute.py` |
 
@@ -216,24 +216,24 @@
 
 **모델별 결과 파일의 정렬 규칙** — `구분` 열로 세 단으로 나누고, 각 단 안에서는 성능(AUC 또는 ΔAUC) 높은 순.
 
-| 구분 | 뜻 |
+| 구⁠분 | 뜻 |
 |---|---|
-| ① 주요 결과 모델 | 포스터·최종 보고에 나온 모델 (임상, 임상 + 부피, + 동역학, 14관점 앙상블, 최종 모델 등) |
-| ② 최종 앙상블 구성 모델 | 포스터에 직접 나오지 않지만 최종 모델의 평균에 들어간 로지스틱 회귀 모델 |
-| ③ 미채택·참고 모델 | 시도했지만 성능 향상이 없어 최종 모델에서 뺀 모델, 또는 비교용 참고 모델 |
+| ① 주⁠요 결⁠과 모⁠델 | 포⁠스⁠터⁠·⁠최⁠종 보⁠고⁠에 나⁠온 모⁠델 (⁠임⁠상⁠, 임⁠상 + 부⁠피⁠, + 동⁠역⁠학⁠, 14⁠관⁠점 앙⁠상⁠블⁠, 최⁠종 모⁠델 등⁠) |
+| ② 최⁠종 앙⁠상⁠블 구⁠성 모⁠델 | 포⁠스⁠터⁠에 직⁠접 나⁠오⁠지 않⁠지⁠만 최⁠종 모⁠델⁠의 평⁠균⁠에 들⁠어⁠간 로⁠지⁠스⁠틱 회⁠귀 모⁠델 |
+| ③ 미⁠채⁠택⁠·⁠참⁠고 모⁠델 | 시⁠도⁠했⁠지⁠만 성⁠능 향⁠상⁠이 없⁠어 최⁠종 모⁠델⁠에⁠서 뺀 모⁠델⁠, 또⁠는 비⁠교⁠용 참⁠고 모⁠델 |
 
-| 파일 | 내용 |
+| 파⁠일 | 내⁠용 |
 |---|---|
-| `01) Data_Subtype pCR Rate.csv` | 아형별 환자 수·pCR 수·pCR률 |
-| `07) Feature_Habitat Cluster Centers (K3, K4).csv` | 최종 모델에 쓴 habitat 유형(K=3·4)별 곡선 특징 중심값(유형 해석용) |
-| `13) Evaluation_CV Performance by Model.csv` | 교차검증(784명, 5-fold × 20회) 모델별 특징 수·AUC(평균·범위)·PR-AUC·Brier |
-| `13) Evaluation_CV Delta AUC.csv` | 교차검증 모델 비교: ΔAUC, 향상된 반복 비율, 보정 t-검정 p값 |
-| `13) Evaluation_CV Subtype AUC.csv` | 교차검증 아형별 AUC (모델 순서는 위 성능 파일과 같음) |
-| `17) Week3_CV Performance by Model.csv` | 치료 3주 차 MRI 추가 분석 교차검증(745명) 모델별 AUC |
-| `17) Week3_CV Delta AUC.csv` | 3주 차 모델 비교: ΔAUC, 향상된 반복 비율, p값 |
-| `18) Week3_CV CNN Ensemble AUC by Repeat.csv` | 반복별 3주 차 관점 앙상블 + CNN 결합 AUC와 평균 |
-| `19) Validation_Internal Validation Performance.csv` | **최종 결과** — 내부 검증(198명) AUC·95% CI·임상 대비 ΔAUC·DeLong p |
-| `19) Validation_Internal Validation Subtype AUC.csv` | 내부 검증 아형별 AUC·95% CI |
+| `01) Data_Subtype pCR Rate.csv` | 아⁠형⁠별 환⁠자 수⁠·pCR 수⁠·pCR⁠률 |
+| `07) Feature_Habitat Cluster Centers (K3, K4).csv` | 최⁠종 모⁠델⁠에 쓴 habitat 유⁠형⁠(K=3·4)⁠별 곡⁠선 특⁠징 중⁠심⁠값⁠(⁠유⁠형 해⁠석⁠용⁠) |
+| `13) Evaluation_CV Performance by Model.csv` | 교⁠차⁠검⁠증⁠(784⁠명⁠, 5-fold × 20⁠회⁠) 모⁠델⁠별 특⁠징 수⁠·AUC(⁠평⁠균⁠·⁠범⁠위⁠)·PR-AUC·Brier |
+| `13) Evaluation_CV Delta AUC.csv` | 교⁠차⁠검⁠증 모⁠델 비⁠교⁠: ΔAUC, 향⁠상⁠된 반⁠복 비⁠율⁠, 보⁠정 t-⁠검⁠정 p⁠값 |
+| `13) Evaluation_CV Subtype AUC.csv` | 교⁠차⁠검⁠증 아⁠형⁠별 AUC (⁠모⁠델 순⁠서⁠는 위 성⁠능 파⁠일⁠과 같⁠음⁠) |
+| `17) Week3_CV Performance by Model.csv` | 치⁠료 3⁠주 차 MRI 추⁠가 분⁠석 교⁠차⁠검⁠증⁠(745⁠명⁠) 모⁠델⁠별 AUC |
+| `17) Week3_CV Delta AUC.csv` | 3⁠주 차 모⁠델 비⁠교⁠: ΔAUC, 향⁠상⁠된 반⁠복 비⁠율⁠, p⁠값 |
+| `18) Week3_CV CNN Ensemble AUC by Repeat.csv` | 반⁠복⁠별 3⁠주 차 관⁠점 앙⁠상⁠블 + CNN 결⁠합 AUC⁠와 평⁠균 |
+| `19) Validation_Internal Validation Performance.csv` | **최⁠종 결⁠과** — 내⁠부 검⁠증⁠(198⁠명⁠) AUC·95% CI·⁠임⁠상 대⁠비 ΔAUC·DeLong p |
+| `19) Validation_Internal Validation Subtype AUC.csv` | 내⁠부 검⁠증 아⁠형⁠별 AUC·95% CI |
 
 참고
 - `임상 + 부피`(0.689)는 원래 결과 파일에 없어, 같은 분할로 다시 계산해 추가함(임상 0.656·+동역학 0.699도 함께 재계산해 원본과 같은지 확인).
@@ -242,15 +242,15 @@
 
 **Figures/** (그림 1~6은 포스터 그림, 흰 배경으로 변환)
 
-| 파일 | 내용 |
+| 파⁠일 | 내⁠용 |
 |---|---|
-| `Fig1) Data_Subtype pCR Rate.png` | 아형별 pCR률 (HER2+ 46%, TNBC 39%, HR+HER2− 17%) |
-| `Fig2) Model Architecture.png` | 모델 구조 (로지스틱 회귀 14개 + ResNet-18 2개 확률 결합) |
-| `Fig3) CV AUC Step-up.png` | 교차검증 AUC 단계별 향상 (임상 0.656 → 3주 차 0.770) |
-| `Fig4) Internal Validation AUC.png` | 내부 검증 AUC (치료 전 0.757, 3주 차 0.816) |
-| `Fig5) Internal Validation Subtype AUC.png` | 내부 검증 아형별 AUC |
-| `Fig6) Internal Validation ROC Curve.png` | 내부 검증 ROC 곡선 (임상 vs 최종 모델) |
-| `Fig7) Internal Validation Calibration.png` | 내부 검증 보정 곡선 (임상 vs 최종 모델, Brier 0.201 → 0.183 → 0.163) |
+| `Fig1) Data_Subtype pCR Rate.png` | 아⁠형⁠별 pCR⁠률 (HER2+ 46%, TNBC 39%, HR+HER2− 17%) |
+| `Fig2) Model Architecture.png` | 모⁠델 구⁠조 (⁠로⁠지⁠스⁠틱 회⁠귀 14⁠개 + ResNet-18 2⁠개 확⁠률 결⁠합⁠) |
+| `Fig3) CV AUC Step-up.png` | 교⁠차⁠검⁠증 AUC 단⁠계⁠별 향⁠상 (⁠임⁠상 0.656 → 3⁠주 차 0.770) |
+| `Fig4) Internal Validation AUC.png` | 내⁠부 검⁠증 AUC (⁠치⁠료 전 0.757, 3⁠주 차 0.816) |
+| `Fig5) Internal Validation Subtype AUC.png` | 내⁠부 검⁠증 아⁠형⁠별 AUC |
+| `Fig6) Internal Validation ROC Curve.png` | 내⁠부 검⁠증 ROC 곡⁠선 (⁠임⁠상 vs 최⁠종 모⁠델⁠) |
+| `Fig7) Internal Validation Calibration.png` | 내⁠부 검⁠증 보⁠정 곡⁠선 (⁠임⁠상 vs 최⁠종 모⁠델⁠, Brier 0.201 → 0.183 → 0.163) |
 
 ---
 
