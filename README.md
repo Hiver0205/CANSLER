@@ -163,7 +163,8 @@ Code/
 ├── 06) CNN Training          ResNet-18 미세조정 (2.5D · 3D)
 ├── 07) Evaluation            교차검증 AUC · ΔAUC · 아형별 AUC
 ├── 08) Week-3 MRI Analysis   치료 3주 차 MRI 다운로드 · 특징 · 모델
-└── 09) Final Validation      내부 검증 1회 평가
+├── 09) Final Validation      내부 검증 1회 평가
+└── 10) Web                   의료진용 예측 웹앱 (Streamlit)
 Results/                      모델별 결과 CSV · 그림
 ```
 

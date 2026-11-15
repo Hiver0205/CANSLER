@@ -20,6 +20,7 @@
 | 모델 | `04) Analysis Table` → `05) Model Training` → `06) CNN Training` → `07) Evaluation` | 분석 테이블 → 로지스틱 회귀 14개 → ResNet-18 → 교차검증 평가 |
 | 치료 3주 차 MRI 추가 분석 | `08) Week-3 MRI Analysis` | 3주 차 MRI 다운로드 → 특징 → 모델 → CNN 결합 |
 | 검증 | `09) Final Validation` | 내부 검증(198명) 1회 평가 |
+| 웹앱 | `10) Web` | 의료진용 pCR 예측 웹앱 (영상 업로드 → 분석 → 결과·근거 표시) |
 
 **파일 이름 규칙:** `실행 순서) 단계_핵심 내용.py` (예: `00) Settings_Path, Clinical Variables.py`)
 **검증 방식:** 982명을 학습 784명 / 내부 검증 198명으로 나눔. 학습 환자로만 5-fold × 20회 교차검증으로 모델을 정하고, 내부 검증 환자는 마지막에 한 번만 평가.
@@ -146,6 +147,35 @@
 - AUC와 부트스트랩 95% CI, 임상 대비 ΔAUC(DeLong), PR-AUC, Brier, 아형별 AUC.
 - 결과: 치료 전 0.641 → **0.757** (ΔAUC +0.116, p=0.0001) · 3주 차 포함 0.636 → **0.816** (197명).
 
+
+### 10) Web — 의료진용 예측 웹앱
+
+최종 모델(치료 전 · 3주 차)을 의료진이 화면에서 쓸 수 있게 만든 Streamlit 웹앱.
+
+**20) Web_App, Screen Layout.py**
+- 화면 전체: 의료진 로그인 · 환자 목록(검색·아형 필터·환자 등록) · 진료 대기자(최대 5명, 끌어서 순서 변경, 상태 표시).
+- 가운데: 치료 전 / 3주 차 MRI 선택, 2D 단면(조영 시점 막대) · 3D 재구성, 정량 수치(부피·최대 직경·시간-신호 곡선·종양 분석 결과).
+- 오른쪽: pCR 도달 확률(원형 게이지, 같은 아형 평균 눈금), 판단 근거, 의사 소견, 결과 저장(CSV), Print(간편 비밀번호 확인).
+
+**21) Web_Inference, Pre and Week-3.py**
+- 업로드한 DICOM에서 특징 추출 → 최종 모델(로지스틱 회귀 앙상블 + CNN) 확률 계산.
+- 치료 전 결과를 저장해 두고 3주 차 분석에서 다시 씀(속도 개선). 단계별 진행률 표시.
+
+**22) Web_Core, Patients, Queue, Image Stats.py**
+- 환자 목록·등록, 분석 실행·결과 저장, 진료 대기자 목록, 의사 소견 저장.
+- 영상 수치: 종양 부피, 최대 직경(볼록 껍질), 시간-신호 곡선과 곡선 유형, SER·유출 영역 비율.
+
+**23) Web_Accounts, Login, PIN.py**
+- 의료진 계정: 비밀번호 PBKDF2-SHA256 해시, 6자리 간편 비밀번호, 30분 미사용 시 자동 로그아웃, 5회 실패 시 5분 잠금.
+- 계정 만들기는 기관 등록 코드 필요 (`.streamlit/secrets.toml` 의 `[auth] signup_code`, 저장소에 올리지 않음).
+
+**24) Web_Batch Precompute.py**
+- 내부 검증 환자의 예측을 미리 계산해 두는 일괄 실행.
+
+**기타:** `run_web.bat`(실행), `assets/`(로고), `.streamlit/config.toml`(화면 색·테마).
+
+> **올리지 않은 파일:** 환자 단위 자료(`Web/cache/`, 업로드 영상), 계정·세션 정보, `secrets.toml`, 환자 이름 파일. 실행하려면 원래 이름(`app.py`, `21_infer.py`, `bpr_core.py`, `auth.py`, `precompute.py`)으로 되돌려 `Web/`(21_infer.py는 `Code1/`)에 두어야 합니다.
+
 ---
 
 ## 3. 실행 순서
@@ -174,6 +204,7 @@
 | 14 / 15 / 16 | `09_t1_download.py` / `10_t1_features.py` / `10b_t1_maps.py` |
 | 17 / 18 | `08_exp3_early_response.py` / `08b_exp3_cnn_ensemble.py` |
 | 19 | `11_final_holdout.py` |
+| 20 / 21 / 22 / 23 / 24 | `Web/app.py` / `Code1/21_infer.py` / `Web/bpr_core.py` / `Web/auth.py` / `Web/precompute.py` |
 
 환경: Python 3.11, Windows 11, NVIDIA CUDA — 패키지는 `Code/requirements.txt`.
 
