@@ -1397,13 +1397,13 @@ def numbers(res, which, keys, names, ph, when):
     f = res["features"]
     st.markdown('<div style="height:10px"></div>' + sec_title("chart", "정량 수치", f"{when} MRI · 종양 크기와 조영 양상"),
                 unsafe_allow_html=True)
-    m = st.container(horizontal=True)
-    m.metric("종양 부피", f"{S['vol_cm3']:.1f} cm³", border=True, help="종양 영역(Analysis Mask) 부피")
-    m.metric("최대 직경", f"{S['feret_mm'] / 10:.1f} cm", border=True, help="가장 큰 병변의 최대 길이")
+    mc = st.columns(4 if "early_pct" in S else 2, gap="small")   # 한 줄 고정 (칸이 다음 줄로 넘어가지 않게)
+    mc[0].metric("종양 부피", f"{S['vol_cm3']:.1f} cm³", border=True, help="종양 영역(Analysis Mask) 부피")
+    mc[1].metric("최대 직경", f"{S['feret_mm'] / 10:.1f} cm", border=True, help="가장 큰 병변의 최대 길이")
     if "early_pct" in S:
-        m.metric("초기 조영 증강률", f"{S['early_pct']:.0f}%", border=True,
-                 help="조영 초기 영상에서 종양 평균 신호가 조영 전보다 늘어난 비율")
-        m.metric("조영 곡선 유형", S["curve_type"], border=True,
+        mc[2].metric("초기 증강률", f"{S['early_pct']:.0f}%", border=True,
+                     help="조영 초기 영상에서 종양 평균 신호가 조영 전보다 늘어난 비율")
+        mc[3].metric("곡선 유형", S["curve_type"], border=True,
                  help=f"초기 이후 마지막 시점까지 변화 {S['late_change']:+.0f}% "
                       "(−10% 아래 = 유출형, +10% 위 = 지속 상승형, 사이 = 평탄형)")
     g1, g2 = st.columns([1.2, 1], gap="medium")
@@ -1438,7 +1438,7 @@ def numbers(res, which, keys, names, ph, when):
             rows.append(("평균 SER", f"{S['ser_mean']:.2f}", "ser"))
         if mode == "t3" and res.get("ftv_cm3"):
             a, b = res["ftv_cm3"]
-            rows.append(("조영 증강 부피 (치료 전 → 3주 차)", f"{a} → {b} cm³", "ftv"))
+            rows.append(("조영 증강 부피", f"{float(a):.1f} → {float(b):.1f} cm³", "ftv"))
         html = "".join(f'<div class="bpr-kv3"><span class="k">{k}{tip(t)}</span><b>{v}</b></div>' for k, v, t in rows)
         fr = [f.get(f"hab3_{j}_frac", np.nan) for j in range(3)]
         if not np.isnan(fr).any():
