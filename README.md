@@ -195,6 +195,22 @@ Results/                      모델별 결과 CSV · 그림
 
 최종 모델을 의료진이 바로 쓸 수 있도록 **Streamlit 웹앱**으로 구현했습니다. 코드는 [`Code/10) Web`](Code/10%29%20Web/)에 있습니다.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/web-main-dark.png" />
+  <img src="assets/web-main-light.png" width="860" alt="BPR 웹앱 분석 화면: 왼쪽 환자 정보·진료 대기자·환자 목록, 가운데 MRI 영상, 오른쪽 pCR 도달 확률과 판단 근거" />
+</picture>
+
+<sub>※ 공개용 캡처: 환자 등록번호·나이는 가리고 MRI 영상은 흐리게 처리했습니다.</sub>
+
+<details>
+<summary>로그인 화면</summary>
+
+<br/>
+
+<img src="assets/web-login.png" width="860" alt="BPR 웹앱 의료진 로그인 화면" />
+
+</details>
+
 | 영역 | 기능 |
 |:---|:---|
 | **환자 관리** | 환자 목록(등록번호·이름 검색, 아형 필터), 새 환자 등록(영상 업로드), 진료 대기자 5명(끌어서 순서 변경, 진료 중·수술 중·대기 중 표시) |
