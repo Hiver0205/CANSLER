@@ -197,10 +197,17 @@ Results/                      모델별 결과 CSV · 그림
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/web-main-dark.png" />
-  <img src="assets/web-main-light.png" width="860" alt="BPR 웹앱 분석 화면: 왼쪽 환자 정보·진료 대기자·환자 목록, 가운데 MRI 영상, 오른쪽 pCR 도달 확률과 판단 근거" />
+  <img src="assets/web-main-light.png" width="860" alt="BPR 웹앱 분석 화면: 왼쪽 환자 정보·진료 대기자·환자 목록, 가운데 종양 3D 재구성, 오른쪽 pCR 도달 확률과 판단 근거" />
 </picture>
 
-<sub>※ 공개용 캡처: 환자 등록번호·나이는 가리고 MRI 영상은 흐리게 처리했습니다.</sub>
+<table>
+<tr>
+<td align="center"><b>분석 결과</b><br/><sub>pCR 도달 확률 · 같은 아형 평균 비교</sub><br/><br/><picture><source media="(prefers-color-scheme: dark)" srcset="assets/web-result-dark.png" /><img src="assets/web-result-light.png" width="300" alt="" /></picture></td>
+<td align="center"><b>정량 수치</b><br/><sub>종양 크기 · 시간-신호 곡선 · 종양 분석 결과</sub><br/><br/><picture><source media="(prefers-color-scheme: dark)" srcset="assets/web-numbers-dark.png" /><img src="assets/web-numbers-light.png" width="380" alt="" /></picture></td>
+</tr>
+</table>
+
+<sub>※ 공개용 캡처: 환자 이름·등록번호는 가상으로 바꿨고, MRI 원본 영상 대신 종양 3D 재구성 화면을 실었습니다.</sub>
 
 <details>
 <summary>로그인 화면</summary>
