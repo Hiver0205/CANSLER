@@ -22,6 +22,7 @@ from pre-treatment DCE-MRI, and testing whether imaging adds value beyond clinic
 <img src="https://img.shields.io/badge/PyTorch-ResNet--18-b40e26?style=flat-square&labelColor=1f1e22" />
 <img src="https://img.shields.io/badge/scikit--learn-Logistic_Regression-b40e26?style=flat-square&labelColor=1f1e22" />
 <img src="https://img.shields.io/badge/PyRadiomics-IBSI-b40e26?style=flat-square&labelColor=1f1e22" />
+<img src="https://img.shields.io/badge/Streamlit-Web_App-b40e26?style=flat-square&labelColor=1f1e22" />
 <img src="https://img.shields.io/badge/I--SPY2-982_patients-b40e26?style=flat-square&labelColor=1f1e22" />
 </p>
 
@@ -35,6 +36,7 @@ from pre-treatment DCE-MRI, and testing whether imaging adds value beyond clinic
 <a href="#data">데이터셋</a> ·
 <a href="#results">결과</a> ·
 <a href="#code">코드 구성</a> ·
+<a href="#web">웹앱</a> ·
 <a href="#method">방법론 · 일정</a> ·
 <a href="#team">팀 소개</a>
 </p>
@@ -181,14 +183,33 @@ Results/                      모델별 결과 CSV · 그림
 | 영상 처리 | SimpleITK, pydicom, NumPy, SciPy |
 | 특징 추출 | PyRadiomics |
 | 모델링 | scikit-learn (로지스틱 회귀), PyTorch · torchvision (ResNet-18, 3D ResNet-18) |
-| 데이터 · 시각화 | pandas, Matplotlib |
+| 데이터 · 시각화 | pandas, Matplotlib, Plotly |
+| 웹앱 | Streamlit, scikit-image |
 | 환경 | Windows 11, Conda, NVIDIA CUDA (GPU) |
 
 </details>
 
 <br/>
 
-<h2 id="method">06. 개발 방법론 · 일정</h2>
+<h2 id="web">06. 의료진용 웹앱</h2>
+
+최종 모델을 의료진이 바로 쓸 수 있도록 **Streamlit 웹앱**으로 구현했습니다. 코드는 [`Code/10) Web`](Code/10%29%20Web/)에 있습니다.
+
+| 영역 | 기능 |
+|:---|:---|
+| **환자 관리** | 환자 목록(등록번호·이름 검색, 아형 필터), 새 환자 등록(영상 업로드), 진료 대기자 5명(끌어서 순서 변경, 진료 중·수술 중·대기 중 표시) |
+| **영상 보기** | 치료 전 / 3주 차 MRI 선택, 2D 단면(조영 시점 막대로 시점별 영상) · 3D 종양 재구성 |
+| **정량 수치** | 종양 부피 · 최대 직경 · 시간-신호 곡선과 곡선 유형 · 유출 영역 비율 · 평균 SER · 3주 차 부피 변화 |
+| **예측 결과** | pCR 도달 확률 원형 게이지(같은 아형 평균과 비교), 판단 근거, 의사 소견 기록, 결과 저장(CSV) · Print |
+| **보안** | 의료진 계정 로그인(기관 등록 코드로 가입), 6자리 간편 비밀번호, 30분 미사용 시 자동 로그아웃, 의료진별 환자 정보 분리 |
+
+- 분석 속도: 치료 전 약 3초, 3주 차 약 2–5초 (분석 결과를 저장해 다시 씀)
+- 화면 모드: 기본 · 다크 모드
+- 환자 단위 자료(분석 결과, 업로드 영상)와 계정 정보는 저장소에 포함하지 않습니다.
+
+<br/>
+
+<h2 id="method">07. 개발 방법론 · 일정</h2>
 
 ### 방법론 — 탐색적 프로토타이핑 (PoC 선행) + CRISP-DM
 
@@ -203,17 +224,18 @@ Results/                      모델별 결과 CSV · 그림
 | 2026.08.27 ~ 2026.12.11 | 전체 프로젝트 (설계 및 프로젝트 기본) |
 | 2026.10.02 ~ 2026.10.08 | 구현 — 전처리 → 특징 추출 → 모델 학습 → 3주 차 추가 분석 → 내부 검증 |
 | 2026.10 ~ | 분석·설계 문서 작성, 포스터·발표 (KY-FESTA) |
+| 2026.11 | 의료진용 웹앱 구현 — 영상 보기 · 예측 결과 · 로그인 · 진료 대기자 |
 
 <br/>
 
-<h2 id="scope">07. 구현 범위 · 향후 계획</h2>
+<h2 id="scope">08. 구현 범위 · 향후 계획</h2>
 
 ### 구현 범위와 보완점
 
 - 본 프로젝트는 비침습 MRI 영상이 기존 임상 정보에 더해 pCR 예측에 기여하는 정도를 **정량적으로 확인하는 탐색적 연구**입니다.
 - 기준 모델은 데이터에서 확보할 수 있는 임상 정보(HR·HER2·나이·인종·폐경)로 구성했으며, 종양 크기는 MRI에서 계산한 종양 부피로 반영했습니다. 종양 등급·Ki-67 등 임상 정보를 더하면 비교 기준을 한층 보완할 수 있습니다.
 - 성능은 **I-SPY2 내부 검증(198명)** 으로 확인했으며, 다른 기관 데이터를 통한 외부 검증으로 범용성을 넓혀 갈 예정입니다.
-- 의료진용 화면(업로드·종양 오버레이·확률 표시)은 개념 설계를 마쳤으며, 웹 시각화로 구현해 나갈 계획입니다.
+- 의료진용 웹앱(영상 업로드·2D/3D 보기·확률과 근거 표시)을 구현했으며, 실제 진료 환경에서의 사용성 평가는 앞으로 진행할 과제입니다.
 
 ### 향후 계획
 
@@ -221,7 +243,7 @@ Results/                      모델별 결과 CSV · 그림
 |:---:|:---|:---|
 | 1 | **외부 데이터셋 검증** | 다른 기관 데이터로 재현성을 확인해 범용 예측 모델 구축 |
 | 2 | **치료 중 MRI 추적** | 미사용 치료 중기(T2)·수술 전(T3) MRI까지 활용해 조기 반응 예측 고도화 |
-| 3 | **의료진용 웹 시각화** | 예측 확률과 근거를 보여주는 화면으로 임상 활용 가능성 확보 |
+| 3 | **웹앱 임상 적용** | 의료진 사용성 평가, 병원 영상 시스템(PACS)과 연동해 영상 업로드 과정 단순화 |
 
 <br/>
 
