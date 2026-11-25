@@ -1,0 +1,46 @@
+# 가상 데이터 데모: 저장소만으로 전체 흐름(가상 MRI 생성 → 전처리 → 특징 → 학습된 모델 예측 → 웹앱 기동)이 도는지 매번 확인
+name: demo
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 패키지 설치 (CPU)
+        run: |
+          python -m pip install --upgrade pip setuptools wheel versioneer
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          pip install --no-build-isolation pyradiomics==3.0.1
+
+      - name: 가상 데이터로 전체 분석 (학습된 로지스틱 회귀 14개 + CNN 2개)
+        run: python demo/run_demo.py --n 4
+
+      - name: 웹앱 기동 확인
+        run: |
+          python demo/run_demo.py --web --port 8501 > web.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8501/_stcore/health; then echo " 웹앱 정상 응답"; exit 0; fi
+            sleep 3
+          done
+          cat web.log; exit 1
+
+      - name: 결과 표 저장
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-results
+          path: Evaluate/demo_results.csv

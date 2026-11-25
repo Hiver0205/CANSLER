@@ -113,8 +113,8 @@ def make_model(torch):
     return m
 
 
-def train_predict(X, owner, y_pat, train_pats, pred_pats, args, torch, seed):
-    """train_pats 환자 슬라이스로 학습 → pred_pats 환자별 점수(슬라이스 logit 평균)."""
+def train_predict(X, owner, y_pat, train_pats, pred_pats, args, torch, seed, save_path=None):
+    """train_pats 환자 슬라이스로 학습 → pred_pats 환자별 점수(슬라이스 logit 평균). save_path: 가중치 저장(웹 추론용)."""
     torch.manual_seed(seed); np.random.seed(seed)
     dev = "cuda"
     mean, std = torch.tensor(MEAN, device=dev), torch.tensor(STD, device=dev)
@@ -149,13 +149,19 @@ def train_predict(X, owner, y_pat, train_pats, pred_pats, args, torch, seed):
             else:
                 lg = model((xb - mean) / std).squeeze(1).float()
             out[p] = float(lg.mean())
+    if save_path is not None:   # 추론에 필요한 입력 규약을 가중치와 함께 저장
+        torch.save({"state_dict": model.state_dict(), "ch_mode": CH_MODE, "dim3": DIM3, "size": args.size,
+                    "max_slices": args.max_slices, "mean": MEAN, "std": STD, "tta": bool(getattr(args, "tta", False)),
+                    "epochs": args.epochs, "seed": seed}, save_path)
+        print(f"  [✓] 가중치 저장: {save_path}", flush=True)
     del model; torch.cuda.empty_cache()
     return out
 
 
-def train_predict_multi(X, owner, y_pat, train_pats, pred_pats, args, torch, seed):
+def train_predict_multi(X, owner, y_pat, train_pats, pred_pats, args, torch, seed, save_dir=None):
     """K3: 시드 여러 개로 학습한 모델의 logit 평균 (학습 잡음 감소)."""
-    outs = [train_predict(X, owner, y_pat, train_pats, pred_pats, args, torch, seed + 7919 * s)
+    outs = [train_predict(X, owner, y_pat, train_pats, pred_pats, args, torch, seed + 7919 * s,
+                          save_path=(save_dir / f"seed{s}.pt") if save_dir else None)
             for s in range(getattr(args, "seeds", 1))]
     return {p: float(np.mean([o[p] for o in outs])) for p in outs[0]}
 
@@ -170,12 +176,67 @@ def final_holdout(df, args, sitk, torch):
     y_all = np.concatenate([dev["pCR"].to_numpy().astype(int), np.zeros(len(hold), int)])  # 홀드아웃 자리표시(미사용)
     tr = np.arange(len(dev)); te = np.arange(len(dev), len(pids))
     print(f"[i] 최종 학습: 개발 {len(dev)}명 → 홀드아웃 {len(hold)}명 예측 · 시드 {args.seeds} · TTA {args.tta}", flush=True)
-    s = train_predict_multi(X, owner, y_all, tr, te, args, torch, seed=cfg.RANDOM_STATE)
-    out = pd.DataFrame({cfg.COL_PID: [pids[i] for i in te], "cnn_logit": [s[i] for i in te]})
     sfx = (("_t6" if CH_MODE == "t6" else "") + ("_3d" if DIM3 else "") + ("_tta" if args.tta else "")
            + (f"_s{args.seeds}" if args.seeds > 1 else "") + (f"_{args.root}" if args.root else ""))
-    out.to_csv(cfg.EVAL_DIR / f"04c_final{sfx}.csv", index=False)
-    print(f"[✓] Evaluate/04c_final{sfx}.csv ({len(out)}명)")
+    save_dir = None
+    if args.save:   # 웹 추론용 재학습: 가중치는 Models/, 예측은 Models/에만 써서 Evaluate의 최종 결과를 덮지 않음
+        save_dir = cfg.PROJECT_ROOT / "Models" / f"cnn{sfx}"
+        save_dir.mkdir(parents=True, exist_ok=True)
+    s = train_predict_multi(X, owner, y_all, tr, te, args, torch, seed=cfg.RANDOM_STATE, save_dir=save_dir)
+    out = pd.DataFrame({cfg.COL_PID: [pids[i] for i in te], "cnn_logit": [s[i] for i in te]})
+    dst = (save_dir / "holdout_logit.csv") if save_dir else (cfg.EVAL_DIR / f"04c_final{sfx}.csv")
+    out.to_csv(dst, index=False)
+    print(f"[✓] {dst} ({len(out)}명)")
+    return 0
+
+
+def distill_cv(dev, y, groups, X, owner, args, torch):
+    """특권 정보 학습(CNN): 정답 0/1 대신 α·정답 + (1−α)·교사 확률로 학습 → CNN 단독 바깥 테스트 AUC 비교.
+    교사 = 22_lupi와 같은 T1 교사(임상+부피+T1 특징). 바깥 학습분 안의 OOF 확률만 쓰고 테스트 환자는 쓰지 않음.
+    T1이 없는 학습 환자는 정답 0/1 그대로. α=1은 기존 방식(비교 기준)."""
+    from sklearn.metrics import roc_auc_score
+    from sklearn.model_selection import StratifiedGroupKFold
+    lp = import_module("22_lupi")
+    t1 = pd.read_csv(cfg.DATA_FEATURES / "t1_features.csv"); t1[cfg.COL_PID] = t1[cfg.COL_PID].astype(str)
+    d = dev.merge(t1, on=cfg.COL_PID, how="left").reset_index(drop=True)
+    has = d["t1v__ftv_pch"].notna().to_numpy()
+    teach = (tr6.cols_of(d, ["clin__", "vol__", "t1v__"]), tr6.cols_of(d, ["t1c__", "t1h__", "t1d__"]))
+    alphas = [float(a) for a in args.distill.split(",")]
+    rows = []
+    for r in range(args.repeats):
+        cv = StratifiedGroupKFold(cfg.CV_FOLDS, shuffle=True, random_state=r)   # 06과 동일
+        for f, (tr, te) in enumerate(cv.split(dev, y, groups)):
+            seed = 1000 * r + f
+            tl = lp.teacher_oof(d.iloc[tr].reset_index(drop=True), y[tr], has[tr], teach, seed)
+            tp = 1 / (1 + np.exp(-tl))
+            for a in alphas:
+                yt = y.astype(np.float32).copy()
+                soft = a * y[tr] + (1 - a) * tp
+                yt[tr] = np.where(np.isnan(tp), y[tr], soft)
+                s = train_predict_multi(X, owner, yt, tr, te, args, torch, seed=10_000 * r + 100 * f)
+                auc = roc_auc_score(y[te], [s[i] for i in te])
+                rows.append({"repeat": r, "fold": f, "alpha": a, "auc": auc, "scores": {groups[i]: s[i] for i in te}})
+                print(f"  반복 {r+1} 폴드 {f+1} α={a}: CNN단독 AUC {auc:.3f}", flush=True)
+    R = pd.DataFrame(rows)
+    ymap = dict(zip(groups, y))
+    def pooled(g):   # 반복 하나의 바깥 테스트 점수를 모아 AUC
+        sc = {p: v for dct in g.scores for p, v in dct.items()}
+        return roc_auc_score([ymap[p] for p in sc], list(sc.values()))
+    per = {a: [pooled(g) for _, g in R[R.alpha == a].groupby("repeat")] for a in alphas}
+    sfx = ("_t6" if CH_MODE == "t6" else "") + ("_3d" if DIM3 else "") + ("_tta" if args.tta else "")
+    R.drop(columns="scores").to_csv(cfg.EVAL_DIR / f"04c_distill{sfx}.csv", index=False)
+    ev = import_module("07_evaluate")
+    base = np.array(per[1.0]) if 1.0 in per else None
+    print("\n=== CNN 특권 정보 학습 (반복별 pooled AUC) ===")
+    for a in alphas:
+        line = f"  α={a}: {np.mean(per[a]):.3f}"
+        if base is not None and a != 1.0:
+            fa = R.pivot_table(index=["repeat", "fold"], columns="alpha", values="auc")
+            dl = np.array(per[a]) - base
+            pv = ev.corrected_ttest((fa[a] - fa[1.0]).to_numpy(), len(dev) * 0.8, len(dev) * 0.2)
+            line += f" · Δ {dl.mean():+.3f} · 양수 반복 {(dl > 0).mean():.0%} · 폴드 p={pv:.3f}"
+        print(line)
+    print(f"[✓] Evaluate/04c_distill{sfx}.csv")
     return 0
 
 
@@ -200,6 +261,10 @@ def main() -> int:
                                                   "지정 시 개발셋을 T1 특징이 있는 환자로 제한 → 08과 같은 분할")
     ap.add_argument("--final", action="store_true",
                     help="최종: 개발셋 전체로 학습 → 홀드아웃 1회 예측 (CV 없음). Evaluate/04c_final*.csv")
+    ap.add_argument("--distill", default=None,
+                    help="특권 정보 학습 비교: α 목록 (예: 1.0,0.5 — 1.0=기존 정답만). CNN 단독 AUC만 계산")
+    ap.add_argument("--save", action="store_true",
+                    help="--final과 함께: 가중치를 Models/cnn*/ 에 저장 (예측도 Models/에만 기록)")
     args = ap.parse_args()
     global CH_MODE, MEAN, STD, DIM3
     CH_MODE, DIM3 = args.channels, args.dim3
@@ -245,6 +310,8 @@ def main() -> int:
         print(f"[i] 외부 학습 환자 {len(ext)}명 추가 (" +
               " · ".join(f"{s} {n}" for s, n in ext.source.value_counts().items()) + ")")
     print(f"[i] 슬라이스 {len(owner)}장 적재 ({X.element_size()*X.nelement()/1e9:.2f} GB) · {time.time()-t0:.0f}s")
+    if args.distill:
+        return distill_cv(dev, y, groups, X, owner, args, torch)
 
     clin, vol, kin = tr6.cols_of(dev, ["clin__"]), tr6.cols_of(dev, ["vol__"]), tr6.cols_of(dev, [tr6.KIN])
     tch = tr6.cols_of(dev, [tr6.TC, tr6.HAB])          # 현재 최고 단일 조합: 전체 곡선 + habitat

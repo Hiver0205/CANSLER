@@ -216,3 +216,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ── BPR: 환자 단위 자료·계정·대용량 가중치는 절대 올리지 않음 ──
+/Data/
+/Evaluate/
+Code1/
+Code/10) Web/cache/
+Code/10) Web/test_upload/
+Code/10) Web/patient_names.csv
+Code/10) Web/sample_patients.csv
+**/cache/auth/
+*.nii
+*.nii.gz
+*.dcm
+Models/**/*.pt
+Models/**/holdout_logit.csv
+Models/*.zip

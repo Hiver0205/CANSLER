@@ -31,6 +31,11 @@ from pre-treatment DCE-MRI, and testing whether imaging adds value beyond clinic
 </p>
 
 <p>
+<a href="https://github.com/Hiver0205/CANSLER/actions/workflows/demo.yml"><img src="https://github.com/Hiver0205/CANSLER/actions/workflows/demo.yml/badge.svg" alt="가상 데이터 데모 실행" /></a>
+</p>
+
+<p>
+<a href="#quickstart">바로 실행</a> ·
 <a href="#problem">문제 정의</a> ·
 <a href="#approach">접근 방법</a> ·
 <a href="#data">데이터셋</a> ·
@@ -42,6 +47,37 @@ from pre-treatment DCE-MRI, and testing whether imaging adds value beyond clinic
 </p>
 
 </div>
+
+<br/>
+
+<h2 id="quickstart">00. 바로 실행 — 가상 데이터 데모</h2>
+
+환자 데이터(I-SPY2 54 GB)는 저장소에 올리지 않았습니다. 대신 **프로그램으로 만든 가상 유방 MRI**로
+전체 흐름(전처리 → 특징 추출 → **실제 학습된 모델**로 예측 → 웹앱)을 저장소만으로 실행할 수 있습니다.
+
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu   # GPU가 있으면 생략 가능
+pip install -r requirements.txt
+pip install --no-build-isolation pyradiomics==3.0.1
+
+python demo/run_demo.py          # 가상 환자 4명 생성 → 분석 → 결과 표 (CPU 수 분)
+python demo/run_demo.py --web    # 같은 가상 환자로 웹앱 실행 → http://localhost:8501
+```
+
+| 단⁠계 | 하⁠는 일 |
+|:---|:---|
+| 가⁠상 MRI 생⁠성 | [`demo/make_synthetic.py`](demo/make_synthetic.py) — I-SPY2와 같은 형식(조영 시점 8개 NIfTI + 종양 마스크 + 메타데이터)으로 지방·유선 조직·흉벽·심장과, 환자마다 조영 곡선이 다른 종양(유출형·평탄형·지속 상승형, 괴사 중심)을 만듦 |
+| 학⁠습⁠된 모⁠델 | 로지스틱 회귀 14개·habitat 모델은 [`Models/`](Models/)에 포함, CNN 가중치(약 300 MB)는 [Release](https://github.com/Hiver0205/CANSLER/releases/tag/models-v1)에서 자동으로 내려받음 (`--no-cnn`이면 로지스틱 회귀만) |
+| 분⁠석 | 실제 웹앱과 같은 추론 코드로 환자당 808개 특징을 계산하고 예측 · 판단 근거 계산, 결과는 `Evaluate/demo_results.csv` |
+| 웹⁠앱 | 데모 계정 — 아이디 `demo` · 비밀번호 `demo1234` · 간편 비밀번호 `246810` |
+| 자⁠동 확⁠인 | 저장소에 올릴 때마다 GitHub Actions가 위 과정을 처음부터 실행 ([실행 기록](https://github.com/Hiver0205/CANSLER/actions/workflows/demo.yml)) |
+
+<picture>
+  <img src="assets/demo-web-2d.png" width="860" alt="가상 환자로 실행한 웹앱: 가상 MRI 위 종양 영역, pCR 도달 확률, 판단 근거" />
+</picture>
+
+> 가상 영상이므로 데모의 예측 확률에는 임상적 의미가 없습니다. 실제 성능(내부 검증 AUC 0.757 · 0.816)은 I-SPY2 자료로 얻은 결과이며 [`Results/`](Results/)에 있습니다.
+> 실제 데이터로 처음부터 재현하려면 [데이터 출처](#data-source)의 자료를 받아 [GUIDE.md](GUIDE.md)의 실행 순서를 따르면 됩니다.
 
 <br/>
 
@@ -167,8 +203,13 @@ Code/
 ├── 08) Week-3 MRI Analysis   치료 3주 차 MRI 다운로드 · 특징 · 모델
 ├── 09) Final Validation      내부 검증 1회 평가
 └── 10) Web                   의료진용 예측 웹앱 (Streamlit)
+Models/                       학습된 로지스틱 회귀 14개(치료 전)·11개(3주 차) · habitat 모델 (CNN 가중치는 Release)
+demo/                         가상 MRI 생성 · 저장소만으로 전체 실행
 Results/                      모델별 결과 CSV · 그림
 ```
+
+파일 이름은 단계별로 읽기 쉽게 붙였고, 코드 안에서는 원래 모듈 이름(`import_module("21_infer")` 등)으로 서로 불러옵니다.
+[`Code/bpr_modules.py`](Code/bpr_modules.py)가 두 이름을 연결하므로 파일 이름을 바꾸지 않고 그대로 실행됩니다.
 
 폴더·파일별 설명, 실행 순서, 결과 파일 안내는 **[GUIDE.md](GUIDE.md)** 에 정리했습니다.
 
@@ -373,10 +414,17 @@ Results/                      모델별 결과 CSV · 그림
 - Clinical Lab Products. (2025). *AI test predicts neoadjuvant response in early breast cancer.* https://clpmag.com/disease-states/cancer/breast/ai-test-predicts-neoadjuvant-response-early-breast-cancer/
 - Agendia. (2024). *New neoadjuvant trial (MINT) confirms the predictive utility of MammaPrint & BluePrint.* https://agendia.com/neoadjuvant-mint-trial-confirms-predictive-utility-of-mammaprint-blueprint/
 
-## 데이터 출처
+<h2 id="data-source">데이터 출처</h2>
 
-- **BreastDCEDL** — I-SPY2 치료 전 DCE-MRI · 종양 마스크 · 임상 정보 (Zenodo 배포, CC BY-NC 4.0)
-- **The Cancer Imaging Archive (TCIA), I-SPY2 / ACRIN 6698** — 치료 3주 차 DCE-MRI · 분석 마스크 (CC BY 4.0). https://www.cancerimagingarchive.net/collection/ispy2/
+- **BreastDCEDL_ISPY2** (982명) — I-SPY2 치료 전 DCE-MRI · 종양 마스크 · 임상 정보. Zenodo, CC BY 4.0. https://zenodo.org/records/17578255
+  Fridman, N., et al. (2026). *Scientific Data*. https://doi.org/10.1038/s41597-026-06589-6
+- **TCIA I-SPY2** — 치료 3주 차 DCE-MRI · 분석 마스크, 임상 정보. CC BY 4.0.
+  Li, W., et al. (2022). *I-SPY 2 Breast Dynamic Contrast Enhanced MRI Trial (ISPY2)* [Data set]. The Cancer Imaging Archive. https://doi.org/10.7937/TCIA.D8Z0-9T85
+- **TCIA ACRIN 6698/I-SPY2** — CC BY 4.0.
+  Newitt, D. C., et al. (2021). *ACRIN 6698/I-SPY2 Breast DWI* [Data set]. The Cancer Imaging Archive. https://doi.org/10.7937/TCIA.KK02-6D95
+
+환자 단위 자료(영상·마스크·환자별 특징·결과)는 이 저장소에 포함하지 않았습니다. 공개한 학습 모델은 위 자료로 학습한 결과물이며
+연구·교육용입니다 (진료 판단에 단독으로 쓰도록 검증된 의료기기가 아님). 자료 이용 시 위 출처를 함께 밝혀 주세요.
 
 <br/>
 

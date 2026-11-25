@@ -7,6 +7,7 @@ bpr_core.py ─ 웹 화면(app.py)과 일괄 분석(precompute.py)이 함께 쓰
 """
 from __future__ import annotations
 import json
+import os
 import pickle
 import sys
 from importlib import import_module
@@ -25,6 +26,7 @@ CACHE = WEB / "cache"          # 환자별 분석 결과 (환자 단위 자료 �
 NAMES_CSV = WEB / "patient_names.csv"   # (선택) 등록번호→환자명. I-SPY2 공개 자료는 이름이 없어 "익명 번호"로 표시
 NOTES = CACHE / "notes"        # 의사 소견 (환자별 json)
 REG = CACHE / "registered"     # 웹에서 새로 등록한 환자 (정보 patients.json + 영상 <등록번호>/, T1/<등록번호>/)
+DEMO = os.environ.get("BPR_DEMO") == "1"   # demo/run_demo.py: 가상 MRI 데이터로 실행 (실제 환자 자료 없음)
 SUBTYPES = ["HER2+", "HR+HER2−", "TNBC"]
 SUBTYPE_RATE = {"HER2+": 45.9, "TNBC": 39.3, "HR+HER2−": 16.8}   # I-SPY2 982명 실제 pCR 비율 (Results 01)
 
@@ -70,6 +72,9 @@ def patients():
         n = pd.read_csv(NAMES_CSV, dtype=str)
         names = dict(zip(n["등록번호"].str.strip(), n["환자명"].str.strip()))
     df["환자명"] = [names.get(p, "익명 " + p.split("-")[-1]) for p in df["등록번호"]]
+    if DEMO:                                   # 가상 데이터 데모: 실제 수술 결과가 없는 가상 환자
+        df["환자명"] = ["가상 환자 " + p.split("-")[-1] for p in df["등록번호"]]
+        df["실제"] = ""
     df["기타"], df["담당"] = "", ""          # 담당 = 새로 등록한 의료진 아이디 (I-SPY2 공개 환자는 공용)
     reg = registered()
     if reg:
@@ -95,6 +100,99 @@ def register(rec):
     rec = {**rec, "등록일": dt.datetime.now().strftime("%Y-%m-%d %H:%M")}
     reg = [r for r in registered() if r["등록번호"] != rec["등록번호"]] + [rec]
     (REG / "patients.json").write_text(json.dumps(reg, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def unregister(pid, uid):
+    """새로 등록한 환자 1명 삭제 (본인이 등록한 환자만). 정보·영상·분석 결과·소견·대기자 명단에서 모두 지움.
+    반환: 오류 문장 ("" = 성공). I-SPY2 공개 환자는 지울 수 없음."""
+    import shutil
+    reg = registered()
+    rec = next((r for r in reg if r["등록번호"] == pid), None)
+    if rec is None:
+        return "새로 등록한 환자만 삭제할 수 있습니다."
+    if rec.get("담당") != uid:
+        return "본인이 등록한 환자만 삭제할 수 있습니다."
+    (REG / "patients.json").write_text(json.dumps([r for r in reg if r["등록번호"] != pid], ensure_ascii=False,
+                                                  indent=1), encoding="utf-8")
+    for base in (REG, REG / "T1", CACHE / "pre", CACHE / "t3"):
+        d = base / pid
+        if d.resolve().parent == base.resolve() and d.is_dir():   # 등록번호에 경로 문자가 있어도 폴더 밖은 안 지움
+            shutil.rmtree(d, ignore_errors=True)
+    for ud in (NOTES.iterdir() if NOTES.exists() else []):
+        f = ud / f"{pid}.json"
+        if f.resolve().parent == ud.resolve():
+            f.unlink(missing_ok=True)
+    _queue_save(uid, [x for x in queue_load(uid) if x["pid"] != pid])
+    return ""
+
+
+def update_registered(pid, uid, fields):
+    """새로 등록한 환자 정보 수정 (본인이 등록한 환자만, 등록번호·담당·등록일은 그대로). 반환: 오류 문장 ("" = 성공)."""
+    reg = registered()
+    i = next((k for k, r in enumerate(reg) if r["등록번호"] == pid), None)
+    if i is None:
+        return "새로 등록한 환자만 수정할 수 있습니다."
+    if reg[i].get("담당") != uid:
+        return "본인이 등록한 환자만 수정할 수 있습니다."
+    fields = {k: v for k, v in fields.items() if k not in ("등록번호", "담당", "등록일")}
+    reg[i] = {**reg[i], **fields}
+    (REG / "patients.json").write_text(json.dumps(reg, ensure_ascii=False, indent=1), encoding="utf-8")
+    return ""
+
+
+# ── I-SPY2 환자 정보 수정·숨김 (원본 자료는 그대로, 의료진 계정별 화면에만 적용) ─────────────
+OVR = CACHE / "overrides"
+OVR_FIELDS = ("환자명", "나이", "HR", "HER2", "폐경", "인종", "기타")
+
+
+def ovr_load(uid):
+    f = OVR / f"{uid}.json"
+    d = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    return {"edit": d.get("edit", {}), "hidden": d.get("hidden", [])}
+
+
+def _ovr_save(uid, d):
+    OVR.mkdir(parents=True, exist_ok=True)
+    (OVR / f"{uid}.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def ovr_edit(uid, pid, fields):
+    d = ovr_load(uid)
+    d["edit"][pid] = {k: fields[k] for k in OVR_FIELDS if k in fields}
+    _ovr_save(uid, d)
+
+
+def ovr_hide(uid, pid, hide=True):
+    d = ovr_load(uid)
+    d["hidden"] = [p for p in d["hidden"] if p != pid] + ([pid] if hide else [])
+    _ovr_save(uid, d)
+    if hide:
+        _queue_save(uid, [x for x in queue_load(uid) if x["pid"] != pid])
+
+
+def apply_overrides(df, uid):
+    """환자 목록에 이 계정의 수정·숨김 반영 (I-SPY2 환자만; 새로 등록한 환자는 patients.json을 직접 고침)."""
+    d = ovr_load(uid)
+    if not d["edit"] and not d["hidden"]:
+        return df
+    df = df[~(df["등록번호"].isin(d["hidden"]) & (df["구분"] != "등록"))].copy()
+    for pid, f in d["edit"].items():
+        i = df.index[(df["등록번호"] == pid) & (df["구분"] != "등록")]
+        for k, v in f.items():
+            if k in df.columns:
+                df.loc[i, k] = v
+        if len(i):
+            df.loc[i, "아형"] = subtype_of(df.loc[i[0], "HR"], df.loc[i[0], "HER2"])
+    return df
+
+
+def clear_results(pid, which=("pre", "t3")):
+    """영상을 다시 올렸을 때 예전 분석 결과 삭제 (다시 분석하도록)."""
+    import shutil
+    for w in which:
+        base = CACHE / w; d = base / pid
+        if d.resolve().parent == base.resolve() and d.is_dir():
+            shutil.rmtree(d, ignore_errors=True)
 
 
 def _reg_inputs(pid):

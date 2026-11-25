@@ -13,6 +13,7 @@ BPR 웹 도구 (Streamlit) ─ I-SPY2 MRI 기반 pCR 예측 판독 화면
 """
 from __future__ import annotations
 import io
+import re
 import sys
 import tempfile
 import zipfile
@@ -65,6 +66,7 @@ section[data-testid="stSidebar"] .block-container {{padding-top: 1.2rem}}
 .bpr-sec {{font-size:13px; font-weight:700; color:{MUTED}; letter-spacing:.04em; margin:2px 0 6px}}
 .bpr-tag-up {{background:{SEL}; color:{CRIMSON}; border-radius:999px; padding:1px 8px; font-size:12px; font-weight:600}}
 .bpr-tag-dn {{background:{PILL}; color:{PILLTX}; border-radius:999px; padding:1px 8px; font-size:12px; font-weight:600}}
+.bpr-tag-up, .bpr-tag-dn {{white-space:nowrap; display:inline-block}}
 .bpr-chip {{display:inline-block; border-radius:999px; padding:1px 10px; font-size:12px; font-weight:600}}
 .bpr-pt {{background:{CARD}; border:1px solid {LINE}; border-left:5px solid {CRIMSON}; border-radius:12px;
           padding:12px 14px 8px; margin-bottom:6px}}
@@ -144,20 +146,26 @@ img.stLogo, [data-testid="stHeaderLogo"] {{height:72px !important; max-width:300
               background:#26212a; color:#f6f1f3; font-size:12.8px; font-weight:400; line-height:1.6; text-align:left;
               letter-spacing:0; padding:13px 15px; border-radius:12px; box-shadow:0 10px 26px rgba(0,0,0,.28); z-index:1000}}
 .bpr-q2 .tip b {{color:#fff}}
+.bpr-q2 .tip, .bpr-q2 .tip * {{white-space:normal !important}}
+.bpr-q2 .tip b {{font-size:inherit !important; font-weight:700}}
 .bpr-q2.up .tip {{top:auto; bottom:150%; right:-4px; width:270px}}
 .bpr-q2.left .tip {{right:auto; left:-12px}}
 .bpr-q2.sm {{width:18px; height:18px; font-size:11px}}
+.bpr-q2 .tip ul {{margin:6px 0 0; padding-left:17px}}
+.bpr-q2 .tip li {{margin:3px 0; font-weight:400}}
 .bpr-q2:hover .tip {{visibility:visible; opacity:1}}
 .bpr-cmp {{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; background:{SOFT}; border-radius:10px;
           padding:10px 12px; font-size:14.5px; color:{INK}}}
 .bpr-cmp b.w {{color:{CRIMSON}; font-size:15px; white-space:nowrap; flex:none; margin-left:auto}}
-.bpr-cmp > span {{white-space:nowrap; min-width:0; flex:0 1 auto; font-size:14px}}
+.bpr-cmp > span {{white-space:normal; word-break:keep-all; flex-wrap:wrap; min-width:0; flex:0 1 auto; font-size:14px}}
 .bpr-kv2 {{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 2px; font-size:14.5px;
           border-top:1px dashed {LINE}; color:{INK}}}
 .bpr-kv2 span {{color:{MUTED}}}
+.bpr-kv2 > b {{white-space:nowrap; flex:none}}
+.bpr-kv2 > span {{word-break:keep-all; min-width:0}}
 .bpr-kv3 {{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0;
           border-bottom:1px dashed {LINE}; font-size:14.5px; color:{INK}}}
-.bpr-kv3 .k {{display:flex; align-items:center; gap:6px; color:{MUTED}}}
+.bpr-kv3 .k {{display:flex; align-items:center; gap:6px; color:{MUTED}; word-break:keep-all}}
 .bpr-kv3 b {{font-size:15.5px; white-space:nowrap}}
 .bpr-kv {{display:flex; justify-content:space-between; gap:10px; padding:4px 0}}
 [data-testid="stSidebarLogo"] {{display:none !important}}
@@ -182,11 +190,29 @@ img.stLogo, [data-testid="stHeaderLogo"] {{height:72px !important; max-width:300
          font-size:11px; font-weight:700; background:{PILL}; color:{PILLTX}; margin-right:6px; flex:none}}
 .bpr-legend {{font-size:11.5px; color:{MUTED}; display:flex; gap:10px; margin:-2px 0 6px}}
 .bpr-dot {{display:inline-block; width:9px; height:9px; border-radius:999px; margin-right:3px; vertical-align:-1px}}
-[class*="st-key-prow_"] [data-testid="stElementContainer"]:has(button) {{position:absolute !important; left:0; top:0;
+[class*="st-key-prow_"] [class*="st-key-pt_"] {{position:absolute !important; left:0; top:0;
     width:100% !important; height:100% !important; z-index:5; margin:0 !important}}
-[class*="st-key-prow_"] [data-testid="stElementContainer"]:has(button) > div {{width:100% !important; height:100% !important}}
-[class*="st-key-prow_"] .stButton, [class*="st-key-prow_"] button {{width:100% !important; height:100% !important;
-                                                                   opacity:0; cursor:pointer}}
+[class*="st-key-prow_"] [class*="st-key-pt_"] > div {{width:100% !important; height:100% !important}}
+[class*="st-key-prow_"] [class*="st-key-pt_"] .stButton, [class*="st-key-prow_"] [class*="st-key-pt_"] button {{
+    width:100% !important; height:100% !important; opacity:0; cursor:pointer}}
+.bpr-row.own {{padding-right:30px}}
+[class*="st-key-pmenu_"] {{position:absolute !important; right:0; top:0; bottom:7px; width:28px !important; z-index:6;
+    display:flex; align-items:center; justify-content:center}}
+.bpr-dots {{font-size:19px; line-height:1; color:{MUTED}; cursor:pointer; padding:6px 6px; border-radius:6px;
+            user-select:none}}
+[class*="st-key-pmenu_"]:hover .bpr-dots {{color:{CRIMSON}; background:{SOFT}}}
+[class*="st-key-pmenub_"] {{display:none !important; position:absolute !important; right:26px; top:50%;
+    transform:translateY(-50%); width:max-content !important; min-width:max-content !important; max-width:none !important;
+    flex-wrap:nowrap !important; padding:4px; z-index:7;
+    background:{CARD}; border:1px solid {LINE}; border-radius:9px; box-shadow:0 6px 18px rgba(0,0,0,.18)}}
+[class*="st-key-pmenu_"]:focus-within [class*="st-key-pmenub_"] {{display:flex !important}}
+[class*="st-key-pmenu_"]:focus-within .bpr-dots {{color:{CRIMSON}; background:{SOFT}}}
+.bpr-dots:focus {{outline:none}}
+[class*="st-key-pmenub_"] > div {{width:auto !important; flex:none !important; min-width:max-content}}
+[class*="st-key-pmenub_"] button {{min-height:30px !important; padding:2px 10px !important; white-space:nowrap;
+                                   width:auto !important}}
+[class*="st-key-pmenub_"] button p {{font-size:12.5px !important}}
+[class*="st-key-pdel_"] button {{color:{CRIMSON} !important}}
 .bpr-row {{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 10px 11px; margin:0 0 7px;
            background:{CARD}; border:1px solid {LINE}; border-radius:10px; transition:all .12s}}
 [class*="st-key-prow_"]:hover .bpr-row {{border-color:{CORAL}; background:{HOVER}}}
@@ -203,8 +229,16 @@ img.stLogo, [data-testid="stHeaderLogo"] {{height:72px !important; max-width:300
 .bpr-new {{display:inline-block; border-radius:4px; padding:0 4px; font-size:10px; font-weight:700; color:#fff;
            background:{CRIMSON}; margin-left:4px; vertical-align:middle}}
 .bpr-big {{font-size:19px; font-weight:700; line-height:1.3}}
-[data-testid="stMetricValue"] {{font-size:1.55rem}}
-[data-testid="stMetric"] {{padding:10px 14px}}
+[data-testid="stMetricValue"] {{font-size:clamp(15px, 1.45vw, 1.55rem)}}
+[data-testid="stMetricValue"], [data-testid="stMetricValue"] *, [data-testid="stMetricLabel"], [data-testid="stMetricLabel"] * {{
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+    word-break:keep-all !important; overflow-wrap:normal !important; line-height:1.2}}
+.js-plotly-plot .slider-grip-rect {{fill:{CRIMSON} !important; stroke:{CRIMSON} !important}}
+.js-plotly-plot .slider-tick-rect {{shape-rendering:crispEdges}}
+.st-key-mrow [data-testid="stHorizontalBlock"] {{flex-wrap:wrap !important; row-gap:0.5rem}}
+.st-key-mrow [data-testid="stColumn"] {{min-width:140px !important; flex:1 1 140px !important}}
+@media (max-width:1500px) {{ [data-testid="stMetric"] {{padding:8px 9px !important}}
+    [data-testid="stMetricLabel"] p {{font-size:12.5px !important}} }}[data-testid="stMetric"] {{padding:10px 14px}}
 .bpr-lh {{display:flex; justify-content:space-between; color:{MUTED}; font-size:12px; padding:0 10px 4px;
           border-bottom:1px solid {LINE}}}
 </style>""", unsafe_allow_html=True)
@@ -393,8 +427,8 @@ def fig2d(frames, names, init, m2, layer, aspect, ov=None):
     import plotly.graph_objects as go
     from skimage import measure
     H, W = frames[0].shape
-    data = [go.Heatmap(z=frames[init], colorscale="gray", zmin=0, zmax=255, showscale=False, hoverinfo="skip",
-                       zsmooth="best")]
+    srcs = [png_uri(f) for f in frames]     # 시점별 영상을 그림으로 미리 만들어 두고 막대를 끌면 그림만 바꿈 (끊김 없이)
+    data = [go.Image(source=srcs[init], hoverinfo="skip", zsmooth="fast")]
     if m2 is not None and m2.any() and layer != "원본만":
         if layer == "종양 영역":
             data.append(go.Heatmap(z=np.where(m2, 1.0, np.nan), colorscale=[[0, CORAL], [1, CORAL]], opacity=0.33,
@@ -418,14 +452,66 @@ def fig2d(frames, names, init, m2, layer, aspect, ov=None):
         showlegend=False, dragmode="pan",
         xaxis=dict(visible=False, range=[-0.5, W - 0.5], constrain="domain"),
         yaxis=dict(visible=False, autorange="reversed", scaleanchor="x", scaleratio=aspect, constrain="domain"))
-    if len(frames) > 1:
-        fig.update_layout(sliders=[dict(
-            active=init, pad=dict(t=12, b=10, l=20, r=20), len=1, x=0, y=0, yanchor="top",
-            currentvalue=dict(prefix="조영제 투입 후 시점 · ", font=dict(color="#f3eef0", size=14), xanchor="left"),
-            font=dict(color="#cfc8cc", size=11), bgcolor="#3a3438", activebgcolor=CRIMSON, bordercolor="#3a3438",
-            tickcolor="#6b6570", transition=dict(duration=0),
-            steps=[dict(method="restyle", args=[{"z": [f.tolist()]}, [0]], label=n) for f, n in zip(frames, names)])])
+    if len(frames) > 1:                     # 시점 막대: 영상 아래 밝은 바탕 · 빨간 동그라미 (단면 위치 막대와 같은 모양)
+        rail = "#4a434a" if DARK else "#dcd5d9"
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            shapes=[dict(type="rect", xref="paper", yref="paper", x0=0, x1=1, y0=0, y1=1, fillcolor="#0c0b0d",
+                         line_width=0, layer="below")],
+            sliders=[dict(
+            active=init, pad=dict(t=14, b=10, l=8, r=8), len=1, x=0, y=0, yanchor="top",
+            currentvalue=dict(prefix="조영제 투입 후 시점 · ", font=dict(color=INK, size=14), xanchor="left"),
+            font=dict(color=MUTED, size=11), bgcolor=rail, activebgcolor=CRIMSON, bordercolor=rail,
+            tickcolor=MUTED, ticklen=7, minorticklen=7, tickwidth=2, transition=dict(duration=0),
+            steps=[dict(method="skip", args=[{"bpr_src": s}], label=n) for s, n in zip(srcs, names)])])
     return fig
+
+
+PHASE_UI = st.components.v2.component(   # 시점 막대를 끄는 동안 영상 그림만 바로 바꿈 (Plotly 전체 다시 그리기 없이 → 부드럽게)
+    "bpr_phase",
+    html="<span></span>",
+    js="""
+export default function () {
+  const hook = () => {
+    window.__bprPhaseRaf = 0
+    document.querySelectorAll('.js-plotly-plot').forEach((gd) => {
+      if (gd.__bprHooked || !gd.on || !gd.layout || !(gd.layout.sliders || []).length) return
+      const steps = gd.layout.sliders[0].steps || []
+      if (!steps.length || !steps[0].args || !steps[0].args[0] || !steps[0].args[0].bpr_src) return
+      gd.__bprHooked = true
+      const srcs = steps.map((s) => s.args[0].bpr_src)
+      srcs.forEach((s) => { const im = new Image(); im.src = s })        // 미리 풀어 두기
+      let cur = null
+      gd.on('plotly_sliderchange', (ev) => {
+        const i = ev.step && ev.step._index != null ? ev.step._index : srcs.indexOf(ev.step.args[0].bpr_src)
+        cur = srcs[i]
+        const el = gd.querySelector('.imagelayer image, g.im image, image')
+        if (el) el.setAttribute('href', cur)
+      })
+      gd.on('plotly_sliderend', () => {
+        if (cur && window.Plotly && gd.data[0].source !== cur) window.Plotly.restyle(gd, { source: [cur] }, [0])
+      })
+    })
+  }
+  hook()
+  if (!window.__bprPhaseObs) {
+    window.__bprPhaseObs = new MutationObserver(() => {
+      if (!window.__bprPhaseRaf) window.__bprPhaseRaf = requestAnimationFrame(hook)
+    })
+    window.__bprPhaseObs.observe(document.body, { childList: true, subtree: true })
+  }
+}
+""",
+)
+
+
+def png_uri(a):
+    """uint8 흑백 영상 → PNG data URI (브라우저가 바로 그림)."""
+    import base64
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.fromarray(np.ascontiguousarray(a), mode="L").save(buf, format="PNG", compress_level=1)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def fig3d(S, color_by, show):
@@ -472,7 +558,7 @@ def group_name(feat, pt):
             if pfx == "clin__HER2":
                 return f"HER2 {pt['HER2'] or '정보 없음'}"
             if pfx == "clin__HR":
-                return f"호르몬 수용체(HR) {pt['HR'] or '정보 없음'}"
+                return f"HR {pt['HR'] or '정보 없음'}"           # 뜻은 옆 물음표에 (한 줄로 보이게 짧게)
             return name
     return "기타 영상 특징"
 
@@ -508,6 +594,22 @@ export default function (component) {
   const { data, setTriggerValue } = component
   const d = data || {}
   const K = "bpr_tok", KD = "bpr_dev"
+  if (!window.__bprTipFix) {             // 물음표 설명: 화면 안에 들어오게 (아래 자리가 없으면 위로, 좌우 넘치면 안쪽으로)
+    window.__bprTipFix = true
+    document.addEventListener("mouseover", (e) => {
+      const q = e.target && e.target.closest && e.target.closest(".bpr-q2")
+      const t = q && q.querySelector(".tip")
+      if (!t) return
+      const m = 8, r = q.getBoundingClientRect()
+      Object.assign(t.style, { position: "fixed", right: "auto", bottom: "auto", left: "0px", top: "0px",
+                               maxWidth: Math.min(320, window.innerWidth - 2 * m) + "px" })
+      const w = t.offsetWidth, h = t.offsetHeight
+      let left = Math.min(Math.max(m, r.right + 12 - w), window.innerWidth - w - m)
+      let top = r.bottom + 8
+      if (top + h > window.innerHeight - m) top = Math.max(m, r.top - 8 - h)
+      t.style.left = left + "px"; t.style.top = top + "px"
+    }, true)
+  }
   if (d.get) {
     setTriggerValue("boot", { token: window.sessionStorage.getItem(K) || "",
                               device: window.localStorage.getItem(KD) || "" })
@@ -564,6 +666,7 @@ def bridge():
 
 
 SIGNUP_CODE_CHECK = True    # 기관 등록 코드 확인 (켜짐) — 코드는 .streamlit/secrets.toml 의 [auth] signup_code
+SIGNUP_ANY6 = True          # 임시(시연용): 숫자 6자리면 아무 코드나 통과. 실제 코드만 받으려면 False
 
 
 def _signed_in(uid, tok, remember):
@@ -654,11 +757,13 @@ def login_page():
             p1 = a.text_input("비밀번호 * (영문+숫자 8자 이상)", type="password")
             p2 = b.text_input("비밀번호 확인 *", type="password")
             pin = st.text_input("간편 비밀번호 * (숫자 6자리 · 간편 로그인과 인쇄할 때 씀)", type="password", max_chars=6)
-            code = st.text_input("기관 등록 코드", type="password", help="관리자에게 받은 기관 등록 코드를 입력해 주세요.")
+            code = st.text_input("기관 등록 코드" + (" (숫자 6자리)" if SIGNUP_ANY6 else ""), type="password",
+                                 max_chars=6 if SIGNUP_ANY6 else None, help="관리자에게 받은 기관 등록 코드를 입력해 주세요.")
             if st.form_submit_button("계정 만들기", type="primary", width="stretch", icon=":material/person_add:"):
                 want = str(st.secrets.get("auth", {}).get("signup_code", ""))
-                if SIGNUP_CODE_CHECK and code.strip() != want:
-                    st.error("기관 등록 코드가 맞지 않습니다.")
+                ok = re.fullmatch(r"\d{6}", code.strip()) if SIGNUP_ANY6 else code.strip() == want
+                if SIGNUP_CODE_CHECK and not ok:
+                    st.error("기관 등록 코드는 숫자 6자리입니다." if SIGNUP_ANY6 else "기관 등록 코드가 맞지 않습니다.")
                 elif not name.strip():
                     st.error("이름을 입력해 주세요.")
                 elif p1 != p2:
@@ -678,6 +783,7 @@ if not ss.uid:
 
 ALL_RAW = patients()
 ALL = ALL_RAW[(ALL_RAW["구분"] != "등록") | (ALL_RAW["담당"] == ss.uid)]    # 다른 의료진이 등록한 환자는 안 보임
+ALL = core.apply_overrides(ALL, ss.uid)                    # 이 계정에서 고친 I-SPY2 환자 정보 · 숨긴 환자
 if ss.sel is not None and ss.sel not in set(ALL["등록번호"]):
     ss.sel = None
 
@@ -805,6 +911,68 @@ def patient_card(p):
     st.markdown(f'<div class="bpr-pt"><div class="nm">{p["환자명"]}</div><div class="id">등록번호 {p["등록번호"]}</div>'
                 + "".join(f'<div class="row"><span>{k}</span><b style="text-align:right">{v}</b></div>' for k, v in rows)
                 + "</div>", unsafe_allow_html=True)
+
+
+PIN_UI = st.components.v2.component(
+    "bpr_pin",
+    html='<input class="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="● ● ● ● ● ●">',
+    css="""
+.pin { box-sizing:border-box; width:100%; padding:10px 12px; font-size:22px; letter-spacing:12px; text-align:center;
+       border:1px solid var(--st-border-color, #ccc); border-radius:10px; outline:none; font-family:inherit;
+       background:var(--st-secondary-background-color); color:var(--st-text-color); }
+.pin:focus { border-color:var(--st-primary-color); box-shadow:0 0 0 3px rgba(224,64,90,.18); }
+.pin::placeholder { letter-spacing:6px; font-size:15px; color:var(--st-text-color); opacity:.35; }
+""",
+    js="""
+export default function (component) {
+  const { parentElement, setStateValue } = component
+  const input = parentElement.querySelector("input.pin")
+  if (!input) return
+  input.oninput = (e) => {
+    const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 6)
+    if (v !== e.target.value) e.target.value = v
+    setStateValue("pin", v)
+  }
+  if (!input.dataset.ready) { input.dataset.ready = "1"; setTimeout(() => input.focus(), 50) }
+}
+""",
+)
+
+
+def pin_box(key):
+    """간편 비밀번호 6자리 입력 (누를 때마다 바로 반영 → 6자리가 되면 버튼 활성화)."""
+    r = PIN_UI(key=key, data={}, default={"pin": ""}, on_pin_change=lambda: None)
+    return (r.pin or "") if r is not None else ""
+
+
+@st.dialog("환자 삭제")
+def delete_dialog(pid, name):
+    isp = not any(r["등록번호"] == pid for r in core.registered())     # I-SPY2 자료 환자 → 목록에서 숨김
+    st.markdown(f"#### 정말 삭제하시겠습니까?\n**{name}** (등록번호 `{pid}`)")
+    st.caption("I-SPY2 자료 환자라 연구 원본 자료는 그대로 두고 이 계정의 환자 목록에서만 지웁니다. "
+               "필터의 '삭제한 I-SPY2 환자 되살리기'로 되돌릴 수 있습니다." if isp else
+               "환자 정보 · 올린 영상 · 분석 결과 · 소견이 모두 지워지며 되돌릴 수 없습니다.")
+    st.markdown("간편 비밀번호 6자리를 입력하면 삭제 버튼이 활성화됩니다.")
+    pin = pin_box(f"delpin_{pid}_{ss.get('dlg_n', 0)}")
+    a, b = st.columns(2)
+    if a.button("취소", width="stretch", key="del_cancel"):
+        st.rerun()
+    if b.button("삭제", type="primary", width="stretch", icon=":material/delete:", key="del_ok",
+                disabled=len(pin) != 6):
+        if not auth.check_pin(ss.uid, pin):
+            st.error("간편 비밀번호가 맞지 않습니다."); return
+        err = "" if isp else core.unregister(pid, ss.uid)
+        if isp:
+            core.ovr_hide(ss.uid, pid)
+        if err:
+            st.error(err); return
+        for k in [k for k in ss.results if k[0] == pid]:
+            ss.results.pop(k)
+        if ss.sel == pid:
+            ss.sel = None
+        patients.clear(); saved_probs.clear()
+        st.toast(f"{name} 환자를 삭제했습니다", icon=":material/check:")
+        st.rerun()
 
 
 def rc(v, name):
@@ -1031,16 +1199,15 @@ def waiting_list():
     QUEUE_UI(data={"rows": rows, "colors": colors}, key="bpr_queue", on_act_change=_queue_act)
 
 
-def row_html(r, on):
+def row_html(r, on, own=False):
     new = '<span class="bpr-new">NEW</span>' if r.구분 == "등록" else ""
-    return (f'<div class="bpr-row{" on" if on else ""}"><div><div class="nm">{r.환자명}{new} '
+    return (f'<div class="bpr-row{" on" if on else ""}{" own" if own else ""}"><div><div class="nm">{r.환자명}{new} '
             f'<span class="bpr-pill">만 {r.나이 or "?"}세</span></div><div class="id">{r.등록번호}</div></div>'
             f'<div class="r"><div>{chip(r.아형)}</div><div>{rc(r.HR, "HR")}{rc(r.HER2, "HER2")}</div></div></div>')
 
 
 def prep_upload(pid, f0, f1):
     """등록용 영상 zip → 저장된 입력(Web/cache/registered/). 반환 (입력 dict, 종양 부피 cm³, 경고, 오류)."""
-    import shutil
     D, note = load_dicom(f0.getvalue())
     if D is None:
         return None, None, [], [note]
@@ -1055,16 +1222,132 @@ def prep_upload(pid, f0, f1):
     dce, mp = dio.write_inputs(arr, mask, core.REG / pid / "pre")
     w3 = None
     if f1 is not None:
-        dce3, seg3, _ = split_study(f1.getvalue(), "bpr_w3chk_")
-        bad = ["3주 차: " + x for x in ispy2_check(dce3, seg3, pid)] if dce3 else ["3주 차 zip에서 MRI 영상을 찾지 못했습니다."]
+        w3, bad = prep_w3(pid, f1)
         if bad:
             return None, None, warn, bad
-        d = w3_dirs(f1.getvalue()); dest = core.REG / "T1" / pid
-        shutil.copytree(d[0], dest / "dce", dirs_exist_ok=True); shutil.copytree(d[1], dest / "mask", dirs_exist_ok=True)
-        w3 = [str(dest / "dce"), str(dest / "mask")]
     inp = {"dce": {str(t): str(v) for t, v in dce.items()}, "mask": str(mp), "t_pre": 0, "t_early": int(D["e"]),
            "t_late": int(D["l"]), "spacing": [float(x) for x in sp], "flip": bool(D["flip"]), "w3": w3}
     return inp, float(mask.sum() * np.prod(sp) / 1000), warn, []
+
+
+def prep_w3(pid, f1):
+    """3주 차 영상 zip → Web/cache/registered/T1/<등록번호>/. 반환 ([dce 폴더, mask 폴더], 오류 목록)."""
+    import shutil
+    dce3, seg3, _ = split_study(f1.getvalue(), "bpr_w3chk_")
+    bad = ["3주 차: " + x for x in ispy2_check(dce3, seg3, pid)] if dce3 else ["3주 차 zip에서 MRI 영상을 찾지 못했습니다."]
+    if bad:
+        return None, bad
+    d = w3_dirs(f1.getvalue()); dest = core.REG / "T1" / pid
+    if dest.is_dir() and dest.resolve().parent == (core.REG / "T1").resolve():
+        shutil.rmtree(dest, ignore_errors=True)                         # 다시 올릴 때 예전 영상과 섞이지 않게
+    shutil.copytree(d[0], dest / "dce", dirs_exist_ok=True); shutil.copytree(d[1], dest / "mask", dirs_exist_ok=True)
+    return [str(dest / "dce"), str(dest / "mask")], []
+
+
+@st.dialog("환자 정보 수정", width="large")
+def edit_dialog(pid):
+    import shutil
+    rec = next((r for r in core.registered() if r["등록번호"] == pid), None)
+    isp = rec is None                                                   # I-SPY2 자료 환자 (원본은 그대로, 이 계정 화면만)
+    if isp:
+        row = ALL[ALL["등록번호"] == pid]
+        if row.empty:
+            st.error("환자를 찾지 못했습니다."); return
+        rec = {k: ("" if pd.isna(v) else v) for k, v in row.iloc[0].items()}
+    elif rec.get("담당") != ss.uid:
+        st.error("본인이 등록한 환자만 수정할 수 있습니다."); return
+    k = f"e_{pid}_"
+    asis = lambda v: v if v in ("양성", "음성") else "모름"  # noqa: E731
+    st.markdown(f'<span class="bpr-muted">등록번호</span> &nbsp; <b>{pid}</b>', unsafe_allow_html=True)
+    c = st.columns([2, 1])
+    name = c[0].text_input("환자명 *", value=rec.get("환자명", ""), key=k + "name").strip()
+    try:
+        age0 = int(rec.get("나이") or 0) or None
+    except ValueError:
+        age0 = None
+    age = c[1].number_input("나이 (만) *", min_value=18, max_value=100, value=age0, step=1, placeholder="세", key=k + "age")
+    with st.expander("환자 정보", expanded=True, icon=":material/person:"):
+        a, b = st.columns(2)
+        hr = a.segmented_control("호르몬 수용체(HR)", ["양성", "음성", "모름"], default=asis(rec.get("HR")),
+                                 required=True, key=k + "hr")
+        her2 = b.segmented_control("HER2", ["양성", "음성", "모름"], default=asis(rec.get("HER2")),
+                                   required=True, key=k + "her2")
+        st.markdown(f'<span class="bpr-muted">아형 (자동)</span> &nbsp; {chip(core.subtype_of(hr, her2))}',
+                    unsafe_allow_html=True)
+        a, b = st.columns(2)
+        races = ["아시아인", "백인", "흑인", "기타"]
+        race = a.selectbox("인종", races, index=races.index(rec["인종"]) if rec.get("인종") in races else 0, key=k + "race")
+        menos = ["폐경 후", "폐경 전", "해당 사항 없음"]
+        meno = b.segmented_control("폐경 여부", menos, default=rec.get("폐경") if rec.get("폐경") in menos else "해당 사항 없음",
+                                   required=True, key=k + "meno")
+    with st.expander("기타", expanded=bool(rec.get("기타")), icon=":material/notes:"):
+        etc = st.text_area("기타 정보", value=rec.get("기타", ""), key=k + "etc", label_visibility="collapsed")
+    inp = rec.get("inputs") or {}
+    f0 = f1 = None
+    if isp:
+        st.caption("I-SPY2 자료 환자입니다. 연구 원본 자료는 그대로 두고 이 계정 화면에서만 정보가 바뀝니다. "
+                   "영상은 I-SPY2 원본 영상을 쓰므로 바꿀 수 없습니다.")
+    else:
+        st.markdown("**영상 다시 올리기** &nbsp;" + f'<span class="bpr-muted">현재: 치료 전 {"있음" if inp else "없음"} · '
+                    f'3주 차 {"있음" if inp.get("w3") else "없음"} · 바꿀 영상만 올리세요</span>', unsafe_allow_html=True)
+        f0 = st.file_uploader("치료 전 MRI (TCIA I-SPY2 형식 검사 폴더 zip · 조영 MRI + Analysis Mask)", type="zip",
+                              key=k + "f0")
+        f1 = st.file_uploader("치료 3주 차 MRI", type="zip", key=k + "f1")
+        st.caption("영상을 다시 올리면 예전 분석 결과는 지워지고, 왼쪽 '분석하기'로 다시 분석합니다.")
+    a, b = st.columns(2)
+    if a.button("취소", width="stretch", key=k + "cancel"):
+        st.rerun()
+    if not b.button("저장", type="primary", width="stretch", icon=":material/save:", key=k + "save"):
+        return
+    miss = [x for x, v in (("환자명", name), ("나이", age)) if not v]
+    if miss:
+        st.error(" · ".join(miss) + "을(를) 입력해 주세요."); return
+    if f1 is not None and f0 is None and not inp:
+        st.error("3주 차 영상만 올리려면 치료 전 영상이 먼저 있어야 합니다."); return
+    yn = lambda v: v if v in ("양성", "음성") else ""  # noqa: E731
+    fields = {"환자명": name, "나이": str(int(age)), "HR": yn(hr), "HER2": yn(her2), "인종": race, "폐경": meno, "기타": etc}
+    if isp:
+        core.ovr_edit(ss.uid, pid, fields)
+        st.toast(f"{name} 환자 정보를 수정했습니다", icon=":material/check:")
+        st.rerun()
+    new_img = False
+    if f0 is not None:                                                  # 치료 전 (+3주 차) 새로: 실패하면 예전 영상 되돌림
+        src, bak = core.REG / pid, core.REG / f"{pid}.bak_edit"
+        shutil.rmtree(bak, ignore_errors=True)
+        if src.is_dir():
+            src.rename(bak)
+        with st.spinner("영상 확인·저장 중 ..."):
+            new, vol, warn, err = prep_upload(pid, f0, f1)
+        if err:
+            shutil.rmtree(src, ignore_errors=True)
+            if bak.is_dir():
+                bak.rename(src)
+            for x in err:
+                st.error(x)
+            return
+        shutil.rmtree(bak, ignore_errors=True)
+        if f1 is None and inp.get("w3"):
+            new["w3"] = inp["w3"]                                       # 3주 차는 예전 것 유지
+        fields.update({"inputs": new, "부피": vol}); new_img = True
+    elif f1 is not None:
+        with st.spinner("3주 차 영상 확인·저장 중 ..."):
+            w3, err = prep_w3(pid, f1)
+        for x in err:
+            st.error(x)
+        if err:
+            return
+        fields["inputs"] = {**inp, "w3": w3}; new_img = True
+    err = core.update_registered(pid, ss.uid, fields)
+    if err:
+        st.error(err); return
+    if new_img:
+        core.clear_results(pid, ("pre", "t3") if f0 is not None else ("t3",))
+        for kk in [kk for kk in ss.results if kk[0] == pid]:
+            ss.results.pop(kk)
+        st.cache_data.clear()                                           # 같은 경로의 예전 영상 캐시 비움
+    patients.clear(); saved_probs.clear()
+    st.toast(f"{name} 환자 정보를 수정했습니다", icon=":material/check:")
+    st.rerun()
 
 
 @st.dialog("새 환자 등록", width="large")
@@ -1122,6 +1405,11 @@ def patient_list():
     with st.expander("필터", icon=":material/filter_list:"):
         sub = st.pills("아형", core.SUBTYPES, selection_mode="multi", default=core.SUBTYPES, key="sub")
         only3 = st.toggle("3주 차 MRI 있는 환자만", value=False, key="only3")
+        hid = core.ovr_load(ss.uid)["hidden"]
+        if hid and st.button(f"삭제한 I-SPY2 환자 되살리기 ({len(hid)}명)", icon=":material/restore:", key="unhide"):
+            for x in hid:
+                core.ovr_hide(ss.uid, x, hide=False)
+            st.rerun()
         train = st.toggle("학습에 쓴 환자 포함", value=False, key="train",
                           help="기본은 모델 학습에 쓰지 않은 내부 검증 환자 198명(+ 새로 등록한 환자)입니다. 켜면 982명 전체가 보입니다.")
     P = ALL if train else ALL[ALL["구분"] != "학습"]
@@ -1136,9 +1424,19 @@ def patient_list():
     st.caption(f"{len(P)}명 · 누르면 환자가 열립니다" + (f" · 앞 {MAX}명만 표시 (검색으로 좁혀 주세요)" if len(P) > MAX else ""))
     with st.container(height=330 if ss.sel else 540, key="plist", gap=None):
         for r in P.head(MAX).itertuples():
+            # 모든 환자 ⋮ → 정보 수정 · 삭제 (I-SPY2 환자는 원본 그대로, 이 계정 화면에서만 수정·숨김)
             with st.container(key=f"prow_{r.등록번호}", gap=None):
-                st.markdown(row_html(r, r.등록번호 == ss.sel), unsafe_allow_html=True)
+                st.markdown(row_html(r, r.등록번호 == ss.sel, True), unsafe_allow_html=True)
                 st.button("열기", key=f"pt_{r.등록번호}", on_click=pick, args=(r.등록번호,), width="stretch")
+                with st.container(key=f"pmenu_{r.등록번호}", gap=None):
+                    st.markdown('<div class="bpr-dots" tabindex="0" role="button" aria-label="더보기">⋮</div>',
+                                unsafe_allow_html=True)                  # 누르면 메뉴 열림, 다른 곳 누르면 닫힘
+                    with st.container(key=f"pmenub_{r.등록번호}", horizontal=True, gap="small"):
+                        if st.button("정보 수정", icon=":material/edit:", key=f"pedit_{r.등록번호}"):
+                            edit_dialog(r.등록번호)
+                        if st.button("삭제", icon=":material/delete:", key=f"pdel_{r.등록번호}"):
+                            ss.dlg_n = ss.get("dlg_n", 0) + 1
+                            delete_dialog(r.등록번호, r.환자명)
 
 
 def analyze_box(p):
@@ -1336,6 +1634,8 @@ def view2d(t, W, layers, flip, when, names, which, keys):
     lay = ("윤곽" if layer != "원본만" else "원본만") if view == "MIP" else layer
     ov = {"종양 내부 패턴": "hab", "조영제 유출": "ser"}.get(lay)
     o2 = core.plane(T, ov, view, k, flip)[0] if ov and T.get(ov) is not None else None
+    if len(frames) > 1:
+        PHASE_UI(key="bpr_phase", data={})
     st.plotly_chart(fig2d(frames, names, init, m2, lay, asp, o2), key=f"im_{when}_{view}_{k}_{lay}_{sub}_{ss.sel}",
                     config={"displayModeBar": False, "scrollZoom": True, "doubleClick": "reset"})
     if layer == "종양 내부 패턴" and view != "MIP":
@@ -1366,23 +1666,34 @@ def view3d(t, when, which, keys):
     return None
 
 
+def tipfmt(head, items=()):
+    """물음표 설명 형식: 굵은 핵심 한 줄 + 글머리 세부 설명."""
+    return f"<b>{head}</b>" + ("<ul>" + "".join(f"<li>{x}</li>" for x in items) + "</ul>" if items else "")
+
+
 TIP = {
-    "curve": "<b>시간-신호 곡선</b>은 조영제를 주사한 뒤 시점마다 <b>종양의 평균 신호가 조영 전보다 몇 % 늘었는지</b>를 "
-             "이은 선입니다.<br><br>· <b>유출형</b>: 빨리 올라갔다가 내려감 → 악성 종양에서 흔함<br>"
-             "· <b>평탄형</b>: 초기 이후 거의 그대로<br>· <b>지속 상승형</b>: 끝까지 계속 올라감 → 양성 병변에서 흔함<br><br>"
-             "영상 아래 조영 시점 막대를 움직이면 각 시점의 영상을 볼 수 있습니다.",
-    "ftv_pch": "치료 전과 비교해 3주 차에 <b>조영 증강 종양 부피(FTV)</b>가 얼마나 줄었는지(−) 또는 늘었는지(+)입니다. "
-               "치료 초기에 크게 줄수록 pCR 가능성이 높은 경향이 있습니다.",
-    "washout": "종양 안에서 <b>SER이 1.1보다 큰 화소</b>의 비율입니다.<br><br>SER(신호 증강비) = (초기 − 조영 전) ÷ "
-               "(후기 − 조영 전). 1.1보다 크면 조영제가 빨리 빠지는 <b>유출형</b> 조직으로, 악성도가 높은 부분에서 흔합니다.",
-    "enh": "조영 초기 영상에서 신호가 조영 전보다 <b>70% 넘게 늘어난</b> 종양 화소의 비율입니다 "
-           "(I-SPY2 종양 부피 FTV와 같은 기준). 높을수록 종양 전체가 고르게 강하게 조영됩니다.",
-    "peak": "시간-신호 곡선에서 <b>가장 높은 평균 증강률</b>과 그때의 조영 시점입니다.",
-    "ser": "종양 화소들의 <b>평균 SER</b>입니다. 1보다 크면 초기에 강하게 들어왔다가 빠지는 양상, "
-           "1보다 작으면 시간이 갈수록 계속 차오르는 양상입니다.",
-    "ftv": "조영이 일정 수준 이상 되는 <b>종양 부피(FTV)</b>를 치료 전과 3주 차로 비교한 값입니다.",
-    "hab": "종양 화소를 <b>조영제가 들어오는 속도와 빠지는 양상</b>으로 3가지 유형(habitat)으로 나눈 비율입니다. "
-           "같은 종양 안에서도 부분마다 성질이 다른 정도(이질성)를 보여 줍니다.",
+    "curve": tipfmt("조영제 주사 후 시점마다 종양 신호가 조영 전보다 몇 % 늘었는지 이은 선",
+                    ["<b>유출형</b>: 빨리 올라갔다가 내려감 → 악성 종양에서 흔함",
+                     "<b>평탄형</b>: 초기 이후 거의 그대로 → 악성 가능성 중간",
+                     "<b>지속 상승형</b>: 끝까지 계속 올라감 → 양성 병변에서 흔함",
+                     "영상 아래 조영 시점 막대를 움직이면 각 시점의 영상을 볼 수 있음"]),
+    "ftv_pch": tipfmt("치료 전 대비 3주 차 조영 증강 종양 부피(FTV)의 변화율",
+                      ["− = 줄어듦, + = 늘어남", "치료 초기에 크게 줄수록 pCR 가능성이 높은 경향"]),
+    "washout": tipfmt("종양 중 조영제가 빨리 빠지는(유출형) 부분의 비율",
+                      ["SER(신호 증강비) = (초기 − 조영 전) ÷ (후기 − 조영 전)",
+                       "SER이 1.1보다 큰 화소를 유출형으로 셈", "악성도가 높은 부분에서 흔함"]),
+    "enh": tipfmt("조영 초기에 강하게 조영되는 종양 부분의 비율",
+                  ["신호가 조영 전보다 70% 넘게 늘어난 화소의 비율 (I-SPY2 종양 부피 FTV와 같은 기준)",
+                   "높을수록 종양 전체가 고르게 강하게 조영됨"]),
+    "peak": tipfmt("시간-신호 곡선에서 가장 높은 평균 증강률", ["그 값에 도달한 조영 시점을 함께 표시"]),
+    "ser": tipfmt("종양 화소들의 평균 SER(신호 증강비)",
+                  ["1보다 크면: 초기에 강하게 들어왔다가 빠지는 양상", "1보다 작으면: 시간이 갈수록 계속 차오르는 양상"]),
+    "ftv": tipfmt("조영되는 종양 부피(FTV)를 치료 전과 3주 차로 비교한 값",
+                  ["FTV = 조영 초기 신호가 조영 전보다 70% 넘게 늘어난 종양 화소의 부피",
+                   "3주 차에 많이 줄수록 항암치료에 잘 반응하는 경향"]),
+    "hab": tipfmt("종양 화소를 조영 양상에 따라 3가지 유형(habitat)으로 나눈 비율",
+                  ["조영제가 들어오는 속도와 빠지는 양상으로 분류",
+                   "같은 종양 안에서도 부분마다 성질이 다른 정도(이질성)를 보여 줌"]),
 }
 
 
@@ -1397,15 +1708,32 @@ def numbers(res, which, keys, names, ph, when):
     f = res["features"]
     st.markdown('<div style="height:10px"></div>' + sec_title("chart", "정량 수치", f"{when} MRI · 종양 크기와 조영 양상"),
                 unsafe_allow_html=True)
-    mc = st.columns(4 if "early_pct" in S else 2, gap="small")   # 한 줄 고정 (칸이 다음 줄로 넘어가지 않게)
-    mc[0].metric("종양 부피", f"{S['vol_cm3']:.1f} cm³", border=True, help="종양 영역(Analysis Mask) 부피")
-    mc[1].metric("최대 직경", f"{S['feret_mm'] / 10:.1f} cm", border=True, help="가장 큰 병변의 최대 길이")
+    with st.container(key="mrow"):                                # 넓은 화면 한 줄 · 좁으면 2×2 (글자가 칸을 넘지 않게)
+        mc = st.columns(4 if "early_pct" in S else 2, gap="small")
+    mc[0].metric("종양 부피", f"{S['vol_cm3']:.1f} cm³", border=True,
+                 help="**조영되는 종양 영역 전체의 부피**\n\n"
+                      "- I-SPY2 Analysis Mask(조영제가 일정 수준 이상 들어오는 종양 화소) 기준\n"
+                      "- 여러 덩어리로 나뉜 종양이면 모두 더한 값\n"
+                      "- 참고: 지름 2 cm 공 모양 ≈ 4.2 cm³, 지름 4 cm ≈ 33.5 cm³\n"
+                      "- 치료 전보다 3주 차에 많이 줄수록 항암치료에 잘 반응하는 경향")
+    mc[1].metric("최대 직경", f"{S['feret_mm'] / 10:.1f} cm", border=True,
+                 help="**가장 큰 종양 덩어리의 가장 긴 길이**\n\n"
+                      "- 덩어리 안에서 서로 가장 먼 두 점 사이의 3차원 거리\n"
+                      "- 병기의 T(종양 크기) 기준: T1 = 2 cm 이하, T2 = 2 cm 초과 ~ 5 cm 이하, T3 = 5 cm 초과\n"
+                      "- 실제 병기는 피부·흉벽 침범 등 다른 소견까지 함께 보고 정함")
     if "early_pct" in S:
         mc[2].metric("초기 증강률", f"{S['early_pct']:.0f}%", border=True,
-                     help="조영 초기 영상에서 종양 평균 신호가 조영 전보다 늘어난 비율")
+                     help="**조영제 주사 직후 종양 신호가 조영 전보다 늘어난 정도**\n\n"
+                          "- 계산: (조영 초기 신호 − 조영 전 신호) ÷ 조영 전 신호 × 100, 종양 평균\n"
+                          "- 조영제가 처음 몇 분 안에 종양으로 얼마나 빨리, 많이 들어오는지 보여 줌\n"
+                          "- 높을수록 혈관이 풍부한 종양 → 악성 종양에서 흔함\n"
+                          "- 종양 부피(FTV)는 이 값이 70%를 넘는 화소만 셈")
         mc[3].metric("곡선 유형", S["curve_type"], border=True,
-                 help=f"초기 이후 마지막 시점까지 변화 {S['late_change']:+.0f}% "
-                      "(−10% 아래 = 유출형, +10% 위 = 지속 상승형, 사이 = 평탄형)")
+                 help="**조영 초기 이후 신호가 빠지는지, 유지되는지, 계속 오르는지**\n\n"
+                      "- 기준: 조영 초기 → 마지막 시점의 종양 신호 변화\n"
+                      "- **유출형** (−10%보다 더 내려감): 빨리 들어왔다가 빨리 빠짐 → 악성 종양에서 흔함\n"
+                      "- **평탄형** (−10% ~ +10%): 들어온 뒤 거의 그대로 유지 → 악성 가능성 중간\n"
+                      "- **지속 상승형** (+10%보다 더 올라감): 끝까지 천천히 계속 차오름 → 양성 병변에서 흔함")
     g1, g2 = st.columns([1.2, 1], gap="medium")
     with g1, st.container(border=True):
         st.markdown(f'<div class="bpr-title" style="margin-bottom:2px"><span class="ic">{_ICON["curve"]}</span>'
@@ -1522,6 +1850,49 @@ def result_panel(p, res):
     csv_box(p, res, prob, avg, note)
 
 
+EVID_TIP = tipfmt("AI 예측을 요인별로 나눠, 각 요인이 pCR 가능성을 얼마나 올리고 내렸는지 보여 줌", [
+    "기준점: 학습에 쓴 환자들의 평균값 — 이 환자의 값이 평균과 많이 다를수록 영향이 큼",
+    "계산: 요인별 모델 가중치 × 이 환자의 값(평균 대비, 표준화), 같은 묶음끼리 합산 (로지스틱 회귀 모델 기준)",
+    "<b>높임</b>(빨강) = pCR 가능성을 올린 요인, <b>낮춤</b>(회색) = 내린 요인",
+    "막대 길이 = 영향 크기 (가장 큰 요인 대비), 영향이 큰 6개만 표시",
+    "원인·결과 관계가 아니라 모델이 이 환자 예측에서 무게를 둔 정도"])
+GROUP_TIP = {
+    "HER2": tipfmt("암세포에 HER2 단백질이 많은지(양성) 여부",
+                   ["양성이면 HER2 표적 치료(트라스투주맙 등)를 함께 받음", "HER2 양성은 항암치료로 pCR에 도달하는 비율이 높은 편"]),
+    "HR": tipfmt("암세포에 호르몬 수용체(에스트로겐·프로게스테론 수용체)가 있는지 여부",
+                 ["양성이면 여성 호르몬에 기대어 자라는 유형", "HR 양성은 항암치료로 pCR에 도달하는 비율이 낮은 편"]),
+    "3주 차 종양 부피 변화": tipfmt("치료 3주 차에 조영되는 종양 부피(FTV)가 치료 전보다 얼마나 줄었는지",
+                               ["일찍 많이 줄수록 pCR 가능성이 높은 경향"]),
+    "3주 차 조영 양상": tipfmt("3주 차 MRI에서 조영제가 종양에 들어오고 빠지는 양상",
+                           ["초기 증강률·유출 정도 등"]),
+    "3주 차 종양 내부 구성": tipfmt("3주 차 종양 안에서 조영 양상이 다른 부분(habitat)들의 비율"),
+    "치료 전 대비 조영 변화": tipfmt("치료 전과 3주 차 사이에 종양의 조영 양상이 바뀐 정도",
+                               ["조영이 약해질수록 종양 활동이 줄었다는 신호"]),
+    "3주 차 종양 질감": tipfmt("3주 차 MRI에서 종양 내부 신호가 얼마나 고르거나 얼룩덜룩한지(질감)",
+                           ["영상 질감 분석(라디오믹스)으로 계산"]),
+    "조영 증강 양상": tipfmt("조영제가 종양에 들어오는 속도와 빠지는 정도",
+                         ["초기 증강률, 유출 영역 비율, SER(신호 증강비)를 묶어 계산",
+                          "빨리 강하게 들어왔다가 빨리 빠질수록 악성도가 높은 종양에서 흔함"]),
+    "시간에 따른 조영 변화": tipfmt("조영 시점마다 종양 신호가 오르내리는 모양(시간-신호 곡선)의 특징"),
+    "종양 내부 구성": tipfmt("종양 안을 조영 양상이 다른 3가지 부분(habitat)으로 나눈 비율",
+                         ["부분마다 성질이 다른 정도(이질성)를 반영"]),
+    "종양 주변 조직": tipfmt("종양 경계에서 바깥 40 mm까지 주변 조직의 조영 양상",
+                         ["0–5 · 5–10 · 10–20 · 20–40 mm 고리별로 계산", "종양 주변의 반응(혈관 증가 등)을 반영"]),
+    "조영 변화의 공간 분포": tipfmt("조영제가 들어오고 빠지는 속도가 종양 안에서 어떻게 퍼져 있는지",
+                               ["속도 지도의 질감으로 계산"]),
+    "종양 내부 질감": tipfmt("조영 영상에서 종양 내부 신호가 얼마나 고르거나 얼룩덜룩한지(질감)",
+                         ["영상 질감 분석(라디오믹스)으로 계산"]),
+    "기타 영상 특징": tipfmt("위 묶음에 속하지 않는 기타 영상 수치"),
+}
+
+
+def group_tip(name):
+    """판단 근거 요인 이름 옆 물음표 (나이·폐경 여부·인종·종양 크기처럼 쉬운 말은 없음)."""
+    key = "HER2" if name.startswith("HER2") else "HR" if name.startswith("HR ") else name
+    t = GROUP_TIP.get(key)
+    return f'<span class="bpr-q2 sm">?<span class="tip">{t}</span></span>' if t else ""
+
+
 def evidence(p, res):
     e = inf.explain(res["features"], "ens_main_lr" if mode == "pre" else "ens_t3_lr", 16 if mode == "pre" else 12)
     g = e.groupby([group_name(f, p) for f in e.index]).sum()
@@ -1530,12 +1901,18 @@ def evidence(p, res):
     rows = ""
     for k, v in g.items():
         tag = '<span class="bpr-tag-up">높임</span>' if v > 0 else '<span class="bpr-tag-dn">낮춤</span>'
-        rows += (f'<div style="display:grid;grid-template-columns:1.5fr 1fr 48px;gap:10px;align-items:center;'
-                 f'padding:5px 0;font-size:14.5px;color:{INK}"><span>{k}</span>'
+        *head, last = k.split(" ")                              # 물음표는 마지막 단어에 붙임 (좁으면 단어 단위로만 줄바꿈)
+        lab = (" ".join(head) + " " if head else "") + (f'<span style="white-space:nowrap;display:inline-flex;'
+                                                         f'align-items:center;gap:5px;vertical-align:middle">{last}{group_tip(k)}</span>')
+        rows += (f'<div style="display:grid;grid-template-columns:minmax(0,max-content) minmax(16px,1fr) auto;gap:8px;'
+                 f'align-items:center;padding:5px 0;font-size:13.5px;color:{INK}">'
+                 f'<span style="word-break:keep-all;line-height:1.3">{lab}</span>'
                  f'<div style="height:9px;background:{SOFT};border-radius:999px;overflow:hidden">'
                  f'<div style="height:100%;width:{abs(v) / mx * 100:.0f}%;background:{CRIMSON if v > 0 else "#8a8390"}"></div>'
                  f'</div><span style="text-align:right">{tag}</span></div>')
-    st.markdown(f'<div class="bpr-card">{sec_title("why", "판단 근거", "예측에 영향을 준 주요 요인")}{rows}</div>',
+    title = (f'<span style="display:inline-flex;align-items:center;gap:7px">판단 근거'
+             f'<span class="bpr-q2 sm">?<span class="tip">{EVID_TIP}</span></span></span>')
+    st.markdown(f'<div class="bpr-card">{sec_title("why", title, "예측에 영향을 준 주요 요인")}{rows}</div>',
                 unsafe_allow_html=True)
 
 

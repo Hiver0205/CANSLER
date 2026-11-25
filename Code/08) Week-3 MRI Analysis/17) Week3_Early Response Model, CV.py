@@ -151,8 +151,8 @@ def run_cv(d, specs, tag):
     return L, F, per, ymap
 
 
-def main_full(final=False) -> int:
-    """T1 원본 기반 (10_t1_features): 개발셋 중 T1 있는 환자 전원. final=True면 홀드아웃 1회 예측만."""
+def load_full():
+    """analysis_table ⋈ t1_features (⋈ radiomics_t1) → (개발셋, 홀드아웃). 20_export_models도 사용."""
     df = pd.read_csv(cfg.DATA_FEATURES / "analysis_table.csv"); df[cfg.COL_PID] = df[cfg.COL_PID].astype(str)
     t1 = pd.read_csv(cfg.DATA_FEATURES / "t1_features.csv"); t1[cfg.COL_PID] = t1[cfg.COL_PID].astype(str)
     d = df.merge(t1, on=cfg.COL_PID, how="inner")
@@ -160,10 +160,13 @@ def main_full(final=False) -> int:
     if rp.exists():
         r1 = pd.read_csv(rp); r1[cfg.COL_PID] = r1[cfg.COL_PID].astype(str)
         d = d.merge(r1, on=cfg.COL_PID, how="left")
-    n_all = len(d)
     hold = d[d["split"].isin(cfg.HOLDOUT_SPLITS)].reset_index(drop=True)
     d = d[~d["split"].isin(cfg.HOLDOUT_SPLITS)].reset_index(drop=True)       # 홀드아웃 제외
-    print(f"[i] T1 원본 특징 {n_all}명 → 개발셋 {len(d)}명 (pCR {d.pCR.mean():.1%}) · 홀드아웃 {n_all-len(d)}명 미사용")
+    return d, hold
+
+
+def full_specs(d):
+    """모델 사양 {이름: (기본 열, 영상 열)}과 앙상블 구성. 20_export_models도 사용."""
     clin, vol = tr6.cols_of(d, ["clin__"]), tr6.cols_of(d, ["vol__"])
     pre = tr6.cols_of(d, [tr6.TC, tr6.HAB])                                   # 치료 전 최고 단일 조합
     t1v = tr6.cols_of(d, ["t1v__"])                                            # FTV 변화 (항상 유지)
@@ -188,6 +191,14 @@ def main_full(final=False) -> int:
            "ens_t1_rad": ["d_clin_t1full", "e_clin_preimg_t1full"] + [f"l1_{k}" for k in views]
                          + (["l3_t1rad"] if t1rad else [])}
     print(f"[i] 특징: 치료 전 {len(pre)} · T1 FTV {len(t1v)} · T1 곡선/habitat/변화 {len(t1x)}")
+    return specs, ENS
+
+
+def main_full(final=False) -> int:
+    """T1 원본 기반 (10_t1_features): 개발셋 중 T1 있는 환자 전원. final=True면 홀드아웃 1회 예측만."""
+    d, hold = load_full()
+    print(f"[i] T1 원본 특징 {len(d) + len(hold)}명 → 개발셋 {len(d)}명 (pCR {d.pCR.mean():.1%}) · 홀드아웃 {len(hold)}명 미사용")
+    specs, ENS = full_specs(d)
     if final:   # 개발셋 전체 학습 → 홀드아웃 1회 예측 (안쪽 CV 튜닝은 build()가 개발셋 안에서 수행)
         y = d["pCR"].to_numpy().astype(int)
         hp = hold[[cfg.COL_PID, "pCR", "subtype"]].copy()
