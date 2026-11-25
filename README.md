@@ -348,7 +348,8 @@ python demo/run_demo.py --web    # 같은 가상 환자로 웹앱 실행 → htt
 | 자⁠동 확⁠인 | 저장소에 올릴 때마다 GitHub Actions가 위 과정을 처음부터 실행 ([실행 기록](https://github.com/Hiver0205/CANSLER/actions/workflows/demo.yml)) |
 
 <picture>
-  <img src="assets/demo-web-2d.png" width="860" alt="가상 환자로 실행한 웹앱: 가상 MRI 위 종양 영역, pCR 도달 확률, 판단 근거" />
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demo-web-2d-dark.png" />
+  <img src="assets/demo-web-2d-light.png" width="860" alt="가상 환자로 실행한 웹앱: 가상 MRI 위 종양 영역, pCR 도달 확률, 판단 근거" />
 </picture>
 
 > 가상 영상이므로 데모의 예측 확률에는 임상적 의미가 없습니다. 실제 성능(내부 검증 AUC 0.757 · 0.816)은 I-SPY2 자료로 얻은 결과이며 [`Results/`](Results/)에 있습니다.
