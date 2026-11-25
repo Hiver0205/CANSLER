@@ -35,49 +35,18 @@ from pre-treatment DCE-MRI, and testing whether imaging adds value beyond clinic
 </p>
 
 <p>
-<a href="#quickstart">바로 실행</a> ·
 <a href="#problem">문제 정의</a> ·
 <a href="#approach">접근 방법</a> ·
 <a href="#data">데이터셋</a> ·
 <a href="#results">결과</a> ·
 <a href="#code">코드 구성</a> ·
 <a href="#web">웹앱 · 결과 읽는 법</a> ·
+<a href="#quickstart">바로 실행</a> ·
 <a href="#method">방법론 · 일정</a> ·
 <a href="#team">팀 소개</a>
 </p>
 
 </div>
-
-<br/>
-
-<h2 id="quickstart">00. 바로 실행 — 가상 데이터 데모</h2>
-
-환자 데이터(I-SPY2 54 GB)는 저장소에 올리지 않았습니다. 대신 **프로그램으로 만든 가상 유방 MRI**로
-전체 흐름(전처리 → 특징 추출 → **실제 학습된 모델**로 예측 → 웹앱)을 저장소만으로 실행할 수 있습니다.
-
-```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu   # GPU가 있으면 생략 가능
-pip install -r requirements.txt
-pip install --no-build-isolation pyradiomics==3.0.1
-
-python demo/run_demo.py          # 가상 환자 4명 생성 → 분석 → 결과 표 (CPU 수 분)
-python demo/run_demo.py --web    # 같은 가상 환자로 웹앱 실행 → http://localhost:8501
-```
-
-| 단⁠계 | 하⁠는 일 |
-|:---|:---|
-| 가⁠상 MRI 생⁠성 | [`demo/make_synthetic.py`](demo/make_synthetic.py) — I-SPY2와 같은 형식(조영 시점 8개 NIfTI + 종양 마스크 + 메타데이터)으로 지방·유선 조직·흉벽·심장과, 환자마다 조영 곡선이 다른 종양(유출형·평탄형·지속 상승형, 괴사 중심)을 만듦 |
-| 학⁠습⁠된 모⁠델 | 로지스틱 회귀 14개·habitat 모델은 [`Models/`](Models/)에 포함, CNN 가중치(약 300 MB)는 [Release](https://github.com/Hiver0205/CANSLER/releases/tag/models-v1)에서 자동으로 내려받음 (`--no-cnn`이면 로지스틱 회귀만) |
-| 분⁠석 | 실제 웹앱과 같은 추론 코드로 환자당 808개 특징을 계산하고 예측 · 판단 근거 계산, 결과는 `Evaluate/demo_results.csv` |
-| 웹⁠앱 | 데모 계정 — 아이디 `demo` · 비밀번호 `demo1234` · 간편 비밀번호 `246810` |
-| 자⁠동 확⁠인 | 저장소에 올릴 때마다 GitHub Actions가 위 과정을 처음부터 실행 ([실행 기록](https://github.com/Hiver0205/CANSLER/actions/workflows/demo.yml)) |
-
-<picture>
-  <img src="assets/demo-web-2d.png" width="860" alt="가상 환자로 실행한 웹앱: 가상 MRI 위 종양 영역, pCR 도달 확률, 판단 근거" />
-</picture>
-
-> 가상 영상이므로 데모의 예측 확률에는 임상적 의미가 없습니다. 실제 성능(내부 검증 AUC 0.757 · 0.816)은 I-SPY2 자료로 얻은 결과이며 [`Results/`](Results/)에 있습니다.
-> 실제 데이터로 처음부터 재현하려면 [데이터 출처](#data-source)의 자료를 받아 [GUIDE.md](GUIDE.md)의 실행 순서를 따르면 됩니다.
 
 <br/>
 
@@ -356,7 +325,38 @@ Results/                      모델별 결과 CSV · 그림
 
 <br/>
 
-<h2 id="method">07. 개발 방법론 · 일정</h2>
+<h2 id="quickstart">07. 바로 실행 — 가상 데이터 데모</h2>
+
+환자 데이터(I-SPY2 54 GB)는 저장소에 올리지 않았습니다. 대신 **프로그램으로 만든 가상 유방 MRI**로
+전체 흐름(전처리 → 특징 추출 → **실제 학습된 모델**로 예측 → 웹앱)을 저장소만으로 실행할 수 있습니다.
+
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu   # GPU가 있으면 생략 가능
+pip install -r requirements.txt
+pip install --no-build-isolation pyradiomics==3.0.1
+
+python demo/run_demo.py          # 가상 환자 4명 생성 → 분석 → 결과 표 (CPU 수 분)
+python demo/run_demo.py --web    # 같은 가상 환자로 웹앱 실행 → http://localhost:8501
+```
+
+| 단⁠계 | 하⁠는 일 |
+|:---|:---|
+| 가⁠상 MRI 생⁠성 | [`demo/make_synthetic.py`](demo/make_synthetic.py) — I-SPY2와 같은 형식(조영 시점 8개 NIfTI + 종양 마스크 + 메타데이터)으로 지방·유선 조직·흉벽·심장과, 환자마다 조영 곡선이 다른 종양(유출형·평탄형·지속 상승형, 괴사 중심)을 만듦 |
+| 학⁠습⁠된 모⁠델 | 로지스틱 회귀 14개·habitat 모델은 [`Models/`](Models/)에 포함, CNN 가중치(약 300 MB)는 [Release](https://github.com/Hiver0205/CANSLER/releases/tag/models-v1)에서 자동으로 내려받음 (`--no-cnn`이면 로지스틱 회귀만) |
+| 분⁠석 | 실제 웹앱과 같은 추론 코드로 환자당 808개 특징을 계산하고 예측 · 판단 근거 계산, 결과는 `Evaluate/demo_results.csv` |
+| 웹⁠앱 | 데모 계정 — 아이디 `demo` · 비밀번호 `demo1234` · 간편 비밀번호 `246810` |
+| 자⁠동 확⁠인 | 저장소에 올릴 때마다 GitHub Actions가 위 과정을 처음부터 실행 ([실행 기록](https://github.com/Hiver0205/CANSLER/actions/workflows/demo.yml)) |
+
+<picture>
+  <img src="assets/demo-web-2d.png" width="860" alt="가상 환자로 실행한 웹앱: 가상 MRI 위 종양 영역, pCR 도달 확률, 판단 근거" />
+</picture>
+
+> 가상 영상이므로 데모의 예측 확률에는 임상적 의미가 없습니다. 실제 성능(내부 검증 AUC 0.757 · 0.816)은 I-SPY2 자료로 얻은 결과이며 [`Results/`](Results/)에 있습니다.
+> 실제 데이터로 처음부터 재현하려면 [데이터 출처](#data-source)의 자료를 받아 [GUIDE.md](GUIDE.md)의 실행 순서를 따르면 됩니다.
+
+<br/>
+
+<h2 id="method">08. 개발 방법론 · 일정</h2>
 
 ### 방법론 — 탐색적 프로토타이핑 (PoC 선행) + CRISP-DM
 
@@ -375,7 +375,7 @@ Results/                      모델별 결과 CSV · 그림
 
 <br/>
 
-<h2 id="scope">08. 구현 범위 · 향후 계획</h2>
+<h2 id="scope">09. 구현 범위 · 향후 계획</h2>
 
 ### 구현 범위와 보완점
 
